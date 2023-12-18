@@ -4,6 +4,12 @@ import Lib
 import TransToCPS
 import qualified CPS as C
 import Lambda
+import UniqueNameConv
 
 main :: IO ()
-main = print $ translate $ Let "id" (Abs "x" (Var "x")) $ (App (Var "id") (Var "x"))
+main = do 
+        visit $ Fix [("id", ("x",(Var "x")))] $ (App (Var "id") (Var "x"))
+        pure ()
+
+
+-- print $ translate $ Fix [("id", ("x",(Var "x")))] $ (App (Var "id") (Var "x"))

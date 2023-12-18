@@ -22,6 +22,10 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - mtl >= 2.3.1
+- containers >= 0.6.7
+- tuple >= 0.3.0.2
+- uniplate
+- multimap
 
 ghc-options:
 - -Wall

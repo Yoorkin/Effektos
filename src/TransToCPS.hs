@@ -5,34 +5,36 @@ module TransToCPS where
 
 import CPS
 import Control.Monad.State.Lazy
+import Data.Functor ((<&>))
+import qualified Data.Map.Lazy as Map
+import Data.Maybe
 import qualified Lambda as L
 
-addStamp :: String -> State Int String
-addStamp n = do
+type Env = Int
+
+uniqueName :: String -> State Env String
+uniqueName n = do
   i <- get
-  modify (+ 1)
-  pure $ n ++ "" ++ show i
+  modify (+1)
+  pure $ n ++ show i
 
-addStamps :: [String] -> State Int [String]
-addStamps = mapM addStamp
-
-trans :: L.Expr -> (Value -> State Int Term) -> State Int Term
-trans (L.Var n) kont = addStamp n >>= kont . Var
+trans :: L.Expr -> (Value -> State Env Term) -> State Env Term
+trans (L.Var n) kont = kont $ Var n
 trans (L.Abs x e) kont =
   do
-    f <- addStamp "f"
-    k <- addStamp "k"
-    x <- addStamp x
+    f <- uniqueName "f"
+    k <- uniqueName "k"
+    x <- uniqueName x
     LetVal f <$> (Fn k x <$> trans e (pure . Continue (Var k))) <*> kont (Var f)
 trans (L.Let x e1 e2) kont =
   do
-    j <- addStamp "j"
-    x <- addStamp x
+    j <- uniqueName "j"
+    x <- uniqueName x
     LetCont j x <$> trans e2 kont <*> trans e1 (pure . Continue (Var j))
 trans (L.App e1 e2) kont =
   do
-    k <- addStamp "k"
-    x <- addStamp "x"
+    k <- uniqueName "k"
+    x <- uniqueName "x"
     trans
       e1
       ( \e1 ->
@@ -51,12 +53,12 @@ trans (L.Tuple xs) kont =
    in f xs []
 trans (L.Select i e) kont =
   do
-    x <- addStamp "x"
+    x <- uniqueName "x"
     trans e (\e -> LetSel x i e <$> kont (Var x))
 trans (L.PrimOp op es) kont =
   let f (e : es) acc = trans e (\x -> f es (x : acc))
       f [] acc = do
-        r <- addStamp "r"
+        r <- uniqueName "r"
         LetPrim r op (reverse acc) <$> kont (Var r)
    in f es []
 trans (L.Constr rep e) kont =
@@ -65,13 +67,21 @@ trans (L.Constr rep e) kont =
       trans
         e
         ( \e -> do
-            c <- addStamp "c"
+            c <- uniqueName "c"
             LetVal c e <$> kont (Var c)
         )
 trans (L.Decon rep e) kont =
   case rep of
     L.TaggedRep i ->
       trans (L.Select 1 e) kont
+trans (L.Fix fs e') kont =
+  let g ((n, (x, e)) : fs) acc = do
+        x <- uniqueName x
+        k <- uniqueName "k"
+        e <- trans e (pure . Continue (Var k))
+        g fs ((n, Fn k x e) : acc)
+      g [] acc = LetFns (reverse acc) <$> trans e' kont
+   in g fs []
 
 -- trans (L.Switch e case default) =
 --   trans e (\e ->
