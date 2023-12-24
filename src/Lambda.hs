@@ -2,28 +2,29 @@
 
 module Lambda where
 import Data.Data
-import Data.Generics.Uniplate.Data
+import Control.Lens.Plated
+import Data.Data.Lens (uniplate)
 
 type Fn = (String, Expr)
 
 data Constant
   = Integer Int
-  deriving (Show, Data, Typeable)
+  deriving (Eq,Ord,Show,Read,Data)
 
 data Primitive
   = Add2
   | Sub2
   | Abort
-  deriving (Show, Data, Typeable)
+  deriving (Eq,Ord,Show,Read,Data)
 
-data Represent
+data Repr
   = TaggedRep Int
-  deriving (Show, Data, Typeable)
+  deriving (Eq,Ord,Show,Read,Data)
 
 data Constructor
-  = DataCon Represent
+  = DataCon Repr
   | ConstCon Constant
-  deriving (Show, Data, Typeable)
+  deriving (Eq,Ord,Show,Read,Data)
 
 data Expr
   = Var String
@@ -35,7 +36,21 @@ data Expr
   | Tuple [Expr]
   | Select Int Expr
   | PrimOp Primitive [Expr]
-  | Constr Represent Expr
-  | Decon Represent Expr
+  | Constr Repr Expr
+  | Decon Repr Expr
   | Switch Expr [Int] (Maybe Expr)
-  deriving (Show, Data, Typeable)
+  deriving (Eq,Ord,Show,Read,Data)
+
+instance Plated Primitive where
+  plate = uniplate
+
+instance Plated Repr where
+  plate = uniplate
+
+instance Plated Constructor where
+  plate = uniplate
+
+instance Plated Expr where
+  plate = uniplate
+
+

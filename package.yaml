@@ -10,7 +10,7 @@ extra-source-files:
 - README.md
 - CHANGELOG.md
 
-# Metadata used when publishing your package
+# Metadata used when publishing your package    
 # synopsis:            Short description of your package
 # category:            Web
 
@@ -24,8 +24,9 @@ dependencies:
 - mtl >= 2.3.1
 - containers >= 0.6.7
 - tuple >= 0.3.0.2
-- uniplate
 - multimap
+- adjunctions
+- lens
 
 ghc-options:
 - -Wall
