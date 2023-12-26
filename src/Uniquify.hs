@@ -1,6 +1,6 @@
 {-# LANGUAGE MonoLocalBinds #-}
 
-module Uniquify (Uniquify.transform) where
+module Uniquify (uniquify) where
 
 import Control.Lens
 import Control.Monad.State.Lazy as State
@@ -50,5 +50,5 @@ exit (Let old e1 e2) =
        in (Let new e1 e2, s)
 exit x = pure x
 
-transform :: Expr -> Expr
-transform e = evalState (visit enter exit e) (0, Map.empty)
+uniquify :: Expr -> Expr
+uniquify e = evalState (visit enter exit e) (0, Map.empty)

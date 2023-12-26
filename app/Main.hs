@@ -4,11 +4,13 @@ import Lib
 import TransToCPS
 import qualified CPS as C
 import Lambda
-import UniqueNameConv(transform)
+import Uniquify(uniquify)
+import Text.Pretty.Simple(pPrint)
+
+x = translate . uniquify $ Let "id" (Abs "x" (Var "x")) (Let "x" (Const $ Integer 10) (Var "x"))
+
 
 main :: IO ()
 main = do 
-        print $ transform $ Let "id" (Abs "x" (Var "x")) (App (Var "id") (Var "x"))
-
-
+        pPrint $ x
 -- print $ translate $ Fix [("id", ("x",(Var "x")))] $ (App (Var "id") (Var "x"))

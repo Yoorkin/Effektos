@@ -25,11 +25,14 @@ source-repository head
 
 library
   exposed-modules:
+      BetaReduction
       CPS
+      DCE
       Lambda
       Lib
       TransToCPS
       Uniquify
+      Util
   other-modules:
       Paths_cpsLab
   autogen-modules:
@@ -44,6 +47,7 @@ library
     , lens
     , mtl >=2.3.1
     , multimap
+    , pretty-simple
     , tuple >=0.3.0.2
   default-language: Haskell2010
 
@@ -64,6 +68,7 @@ executable cpsLab-exe
     , lens
     , mtl >=2.3.1
     , multimap
+    , pretty-simple
     , tuple >=0.3.0.2
   default-language: Haskell2010
 
@@ -85,5 +90,6 @@ test-suite cpsLab-test
     , lens
     , mtl >=2.3.1
     , multimap
+    , pretty-simple
     , tuple >=0.3.0.2
   default-language: Haskell2010

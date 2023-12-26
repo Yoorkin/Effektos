@@ -27,6 +27,7 @@ dependencies:
 - multimap
 - adjunctions
 - lens
+- pretty-simple
 
 ghc-options:
 - -Wall

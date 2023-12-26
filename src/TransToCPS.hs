@@ -1,13 +1,10 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
-module TransToCPS where
+module TransToCPS(translate) where
 
 import CPS
 import Control.Monad.State.Lazy
-import Data.Functor ((<&>))
-import qualified Data.Map.Lazy as Map
-import Data.Maybe
 import qualified Lambda as L
 
 type Env = Int
@@ -16,7 +13,7 @@ uniqueName :: String -> State Env String
 uniqueName n = do
   i <- get
   modify (+1)
-  pure $ n ++ show i
+  pure $ "^" ++ n ++ show i
 
 trans :: L.Expr -> (Value -> State Env Term) -> State Env Term
 trans (L.Var n) kont = kont $ Var n
@@ -24,12 +21,10 @@ trans (L.Abs x e) kont =
   do
     f <- uniqueName "f"
     k <- uniqueName "k"
-    x <- uniqueName x
     LetVal f <$> (Fn k x <$> trans e (pure . Continue (Var k))) <*> kont (Var f)
 trans (L.Let x e1 e2) kont =
   do
     j <- uniqueName "j"
-    x <- uniqueName x
     LetCont j x <$> trans e2 kont <*> trans e1 (pure . Continue (Var j))
 trans (L.App e1 e2) kont =
   do
