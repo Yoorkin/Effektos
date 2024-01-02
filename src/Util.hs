@@ -5,7 +5,9 @@ import Data.List ((\\))
 import Data.Maybe (mapMaybe)
 import Control.Lens (transform)
 import Control.Lens.Combinators (universeOn)
-import Control.Lens.Plated (universe)
+import Control.Lens.Plated (universe, Plated)
+import Control.Lens.Combinators (mapMOf)
+import Control.Lens.Combinators (plate)
 
 bound :: Term -> [Name]
 bound e = concatMap f (universe e)

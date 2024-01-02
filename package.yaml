@@ -28,6 +28,7 @@ dependencies:
 - adjunctions
 - lens
 - pretty-simple
+- comonad
 
 ghc-options:
 - -Wall
