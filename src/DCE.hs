@@ -24,3 +24,4 @@ eliminate a = if a == b then b else eliminate b
     f (LetFns fns t) = LetFns (filter (not . isDead . fst) fns) t
     f x = x
 
+

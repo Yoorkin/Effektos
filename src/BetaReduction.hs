@@ -1,10 +1,16 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+
 module BetaReduction where
 
 import CPS
 import Control.Lens (transformOn)
-import Control.Lens.Plated (universe,transform)
+import Control.Lens.Plated (rewriteM, transform, transformM, universe)
+import Control.Monad.State.Lazy
 import qualified Data.Map as Map
 import Util (free)
+import Data.Maybe (fromMaybe)
 
 -- reduction :: Term -> Term
 -- reduction a = transform f a
@@ -29,6 +35,7 @@ collect = Map.fromList . concatMap f . universe
     f t@(LetVal n _ _) = [(n, t)]
     f t@(LetCont n _ _ _) = [(n, t)]
     f t@(LetPrim n _ _ _) = [(n, t)]
+    f t@(LetSel n _ _ _) = [(n, t)]
     f _ = []
 
 reduce :: Bindings -> Term -> Term
@@ -46,6 +53,38 @@ reduce bs = transform g
         _ -> t
     -- beta pair
     g t = t
+
+bindings :: Term -> [(Name, Term)]
+bindings t@(LetVal n _ _) = [(n, t)]
+bindings t@(LetCont n _ _ _) = [(n, t)]
+bindings t@(LetPrim n _ _ _) = [(n, t)]
+bindings t@(LetSel n _ _ _) = [(n, t)]
+bindings _ = []
+
+reduceM :: Term -> State Bindings Term
+reduceM = rewriteM g
+  where
+    g t = do
+       
+      bs <- get
+      let r = case t of
+            -- beta cont
+            (Continue (Var k) y) -> do
+              (LetCont _ x c _) <- Map.lookup k bs
+              pure $ replace (Var x) y c
+            -- beta fun
+            (Apply (Var f) j y) -> do
+              (LetVal _ (Fn k x c) _) <- Map.lookup f bs
+              pure . replace (Var x) y . replace (Var k) j $ c
+            -- beta pair
+            (LetSel y i (Var x) _) -> do
+              (LetVal _ (Tuple elems) c) <- Map.lookup x bs
+              let xi = elems !! i
+              pure $ replace (Var y) xi c
+            _ -> Nothing
+      let new = Map.fromList (maybe [] bindings r)
+      put (new `Map.union` bs)
+      pure r
 
 -- reduction :: Term -> Term
 -- -- beta cont

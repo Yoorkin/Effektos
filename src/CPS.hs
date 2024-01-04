@@ -21,7 +21,7 @@ data Value
 
 data Term
   = LetVal Name Value Term
-  | LetSel Name Int Value Term
+  | LetSel Name Int Value Term -- TODO: Value to String, the Value should be (Var x)
   | LetCont Name Name Term Term
   | LetFns [(Name, Value)] Term
   | Continue Value Value

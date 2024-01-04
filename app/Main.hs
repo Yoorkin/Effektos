@@ -7,7 +7,10 @@ import Lambda
 import Uniquify(uniquify)
 import Text.Pretty.Simple(pPrint)
 
-x = translate . uniquify $ Let "id" (Abs "x" (Var "x")) (Let "x" (Const $ Integer 10) (Var "x"))
+toCPS = translate . uniquify 
+
+x = toCPS $ Let "id" (Abs "x" (Var "x")) (Let "x" (Const $ Integer 10) (Var "x"))
+sel = toCPS $ Let "xi" (Select 1 (Tuple [Const (Integer 1),Const (Integer 2)])) (Var "xi")
 
 
 main :: IO ()
