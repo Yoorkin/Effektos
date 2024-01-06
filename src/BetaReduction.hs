@@ -1,18 +1,18 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
-module BetaReduction(reduce) where
+module BetaReduction (reduce) where
 
 import CPS
 import Control.Lens (transformOn)
 import Control.Lens.Plated (rewriteM, universe)
 import Control.Monad.State.Lazy
 import qualified Data.Map as Map
-import Util (var)
 import Data.Maybe (fromMaybe)
-
+import Lambda (Primitive (..))
+import Util (var)
 
 replace :: Name -> Name -> Term -> Term
 replace s t = transformOn var f
@@ -25,15 +25,19 @@ type Bindings = Map.Map Name Term
 
 bindings :: Term -> [(Name, Term)]
 bindings t = case t of
-         (LetVal n _ _) -> [(n, t)]
-         (LetSel n _ _ _) -> [(n, t)]
-         (LetCont n _ _ _) -> [(n, t)]
-         (LetFns fns _) -> map ((,t) . fst) fns
-         (LetPrim n _ _ _) -> [(n, t)]
-         _ -> []
+  (LetVal n _ _) -> [(n, t)]
+  (LetSel n _ _ _) -> [(n, t)]
+  (LetCont n _ _ _) -> [(n, t)]
+  (LetFns fns _) -> map ((,t) . fst) fns
+  (LetPrim n _ _ _) -> [(n, t)]
+  _ -> []
 
 collect :: Term -> Bindings
 collect t = Map.fromList (concatMap bindings $ universe t)
+
+valueOfLetVal :: Term -> Maybe Value
+valueOfLetVal (LetVal _ v _) = Just v
+valueOfLetVal _ = Nothing
 
 reduceM :: Term -> State Bindings Term
 reduceM = rewriteM g
@@ -54,6 +58,16 @@ reduceM = rewriteM g
               (LetVal _ (Tuple elems) _) <- Map.lookup x bs
               let xi = elems !! i
               pure $ replace y xi c
+            -- constant folding
+            (LetPrim n op ns e) -> do
+              vs <-
+                mapM
+                  (\x -> Map.lookup x bs >>= valueOfLetVal)
+                  ns
+              case (op, vs) of
+                (Add2, [I32 a, I32 b]) -> Just (LetVal n (I32 $ a + b) e)
+                (Sub2, [I32 a, I32 b]) -> Just (LetVal n (I32 $ a - b) e)
+                _ -> Nothing
             _ -> Nothing
       let new = Map.fromList . bindings $ fromMaybe t r
       put (new `Map.union` bs)
@@ -61,4 +75,3 @@ reduceM = rewriteM g
 
 reduce :: Term -> Term
 reduce t = evalState (reduceM t) (collect t)
-

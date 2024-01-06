@@ -40,7 +40,7 @@ trans (L.App e1 e2) kont =
             )
       )
 trans (L.Const c) kont = do
-  constant <- uniqueName "const"
+  constant <- uniqueName "c"
   let v = case c of
         L.Integer v -> I32 v
   LetVal constant v <$> kont constant

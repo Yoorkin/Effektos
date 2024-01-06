@@ -34,7 +34,7 @@ data Term
   deriving (Eq, Ord, Read, Data)
 
 renderDoc :: Doc ann -> String
-renderDoc = renderString . layoutPretty defaultLayoutOptions 
+renderDoc = renderString . layoutPretty defaultLayoutOptions
 
 instance Show Value where
   show = renderDoc . pretty
@@ -60,7 +60,7 @@ instance Pretty Value where
   pretty Unit = pretty "()"
   pretty (Tuple es) = lparen <> concatWith (\x y -> x <> comma <+> y) (map pretty es) <> rparen
   pretty (Cont n t) = group (pretty "λ" <> pretty n <> dot <> pretty t)
-  pretty (Fn k x t) = group (parens $ pretty "λ" <+> pretty k <+> pretty x <+> dot <+> pretty t)
+  pretty (Fn k x t) = group (parens $ pretty "λ" <+> pretty k <+> pretty x <+> dot <> nested (line <> pretty t))
 
 instance Pretty Term where
   pretty (LetVal n v t) =
@@ -95,7 +95,7 @@ instance Pretty Term where
     group $
       pretty "let"
         <> nested
-          (softline
+          ( softline
               <> pretty k
               <+> pretty x
               <+> pretty "="
@@ -109,7 +109,27 @@ instance Pretty Term where
   pretty (LetFns {}) = pretty "@"
   pretty (Continue k x) = group (parens $ pretty k <+> pretty x)
   pretty (Apply f k x) = group (parens $ pretty f <+> pretty k <+> pretty x)
-  pretty (LetPrim {}) = pretty "@"
+  pretty (LetPrim n op ns t) =
+    group
+      ( pretty
+          "let"
+          <> nested
+            ( line
+                <> pretty n
+                <+> pretty "="
+                <> group
+                  ( nested
+                      ( line
+                          <> pretty (show op)
+                          <+> lparen
+                          <> concatWith (\x y -> x <> comma <+> y) (map pretty ns)
+                          <> rparen
+                      )
+                  )
+            )
+            </> pretty "in"
+      )
+      </> pretty t
   pretty (Switch {}) = pretty "@"
   pretty (Halt e) = group (parens $ pretty "halt" </> pretty e)
 
