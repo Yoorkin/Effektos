@@ -13,6 +13,7 @@ import qualified Data.Map as Map
 import Util (var)
 import Data.Maybe (fromMaybe)
 
+
 replace :: Name -> Name -> Term -> Term
 replace s t = transformOn var f
   where

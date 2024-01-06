@@ -30,6 +30,8 @@ library
       DCE
       Lambda
       Lib
+      Parser
+      Sexp
       TransToCPS
       Uniquify
       Util
