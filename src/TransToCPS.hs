@@ -13,7 +13,7 @@ uniqueName :: String -> State Env String
 uniqueName n = do
   i <- get
   modify (+ 1)
-  pure $ "^" ++ n ++ show i
+  pure $ "" ++ n ++ show i
 
 trans :: L.Expr -> (Name -> State Env Term) -> State Env Term
 trans (L.Var n) kont = kont n

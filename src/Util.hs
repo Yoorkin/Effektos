@@ -7,6 +7,8 @@ import Control.Lens (Traversal')
 import Control.Lens.Combinators (mapMOf, plate, universeOn)
 import Control.Lens.Plated (Plated, universe)
 import Data.List ((\\))
+import Control.Lens (contextsOn)
+import Control.Comonad.Store (pos)
 
 bound :: Term -> [Name]
 bound e = concatMap f (universe e)
@@ -22,6 +24,9 @@ occur = universeOn var
 
 free :: Term -> [Name]
 free e = occur e \\ bound e
+
+usageCount :: Name -> Term -> Int
+usageCount n = length . filter (==n) . map pos . contextsOn var 
 
 visit :: (Monad m, Plated a) => (a -> m a) -> (a -> m a) -> a -> m a
 visit f g x = g =<< mapMOf plate (visit f g) =<< f x

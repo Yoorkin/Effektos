@@ -7,6 +7,8 @@ import Control.Lens.Plated
 import Data.Data
 import Data.Data.Lens
 import qualified Lambda as L
+import Prettyprinter
+import Prettyprinter.Render.String (renderString)
 
 type Name = String
 
@@ -17,7 +19,7 @@ data Value
   | Tuple [Name]
   | Cont Name Term -- k e
   | Fn Name Name Term -- k x e
-  deriving (Eq, Ord, Show, Read, Data)
+  deriving (Eq, Ord, Read, Data)
 
 data Term
   = LetVal Name Value Term
@@ -29,13 +31,87 @@ data Term
   | LetPrim Name L.Primitive [Name] Term
   | Switch Name [Term]
   | Halt Name
-  deriving (Eq, Ord, Show, Read, Data)
+  deriving (Eq, Ord, Read, Data)
+
+renderDoc :: Doc ann -> String
+renderDoc = renderString . layoutPretty defaultLayoutOptions 
+
+instance Show Value where
+  show = renderDoc . pretty
+
+instance Show Term where
+  show = renderDoc . pretty
 
 instance Plated Value where
   plate = uniplate
 
 instance Plated Term where
   plate = uniplate
+
+(</>) a b = a <> line <> b
+
+(<//>) a b = a <> hardline <> b
+
+nested = nest 2
+
+instance Pretty Value where
+  pretty (Var n) = pretty n
+  pretty (I32 i) = pretty i
+  pretty Unit = pretty "()"
+  pretty (Tuple es) = lparen <> concatWith (\x y -> x <> comma <+> y) (map pretty es) <> rparen
+  pretty (Cont n t) = group (pretty "λ" <> pretty n <> dot <> pretty t)
+  pretty (Fn k x t) = group (parens $ pretty "λ" <+> pretty k <+> pretty x <+> dot <+> pretty t)
+
+instance Pretty Term where
+  pretty (LetVal n v t) =
+    group
+      ( pretty
+          "let"
+          <> nested
+            ( line
+                <> pretty n
+                <+> pretty "="
+                <> group (nested (line <> pretty v))
+            )
+            </> pretty "in"
+      )
+      </> pretty t
+  pretty (LetSel n i n' t) =
+    pretty "let"
+      <+> pretty n
+      <+> group
+        ( nested
+            ( pretty "="
+                </> parens
+                  ( pretty "select"
+                      <+> pretty i
+                      <+> pretty n'
+                  )
+            )
+            </> pretty "in"
+        )
+        </> pretty t
+  pretty (LetCont k x c t) =
+    group $
+      pretty "let"
+        <> nested
+          (softline
+              <> pretty k
+              <+> pretty x
+              <+> pretty "="
+              <> nested
+                ( line
+                    <> pretty c
+                )
+          )
+          </> pretty "in"
+          </> pretty t
+  pretty (LetFns {}) = pretty "@"
+  pretty (Continue k x) = group (parens $ pretty k <+> pretty x)
+  pretty (Apply f k x) = group (parens $ pretty f <+> pretty k <+> pretty x)
+  pretty (LetPrim {}) = pretty "@"
+  pretty (Switch {}) = pretty "@"
+  pretty (Halt e) = group (parens $ pretty "halt" </> pretty e)
 
 -- value :: Traversal' Term Value
 -- value f = goExpr

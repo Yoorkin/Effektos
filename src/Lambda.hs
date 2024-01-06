@@ -38,7 +38,7 @@ data Expr
   | PrimOp Primitive [Expr]
   | Constr Repr Expr
   | Decon Repr Expr
-  | Switch Expr [Int] (Maybe Expr)
+  | Switch Expr [(Int,Expr)] (Maybe Expr)
   deriving (Eq,Ord,Show,Read,Data)
 
 instance Plated Primitive where

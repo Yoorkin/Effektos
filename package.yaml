@@ -29,6 +29,7 @@ dependencies:
 - lens
 - pretty-simple
 - comonad
+- prettyprinter >= 1.7.1
 
 ghc-options:
 - -Wall

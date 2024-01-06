@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 {-# LANGUAGE TupleSections #-}
 
-module BetaReduction where
+module BetaReduction(reduce) where
 
 import CPS
 import Control.Lens (transformOn)
@@ -32,13 +32,16 @@ bindings t = case t of
          (LetPrim n _ _ _) -> [(n, t)]
          _ -> []
 
+collect :: Term -> Bindings
+collect t = Map.fromList (concatMap bindings $ universe t)
+
 reduceM :: Term -> State Bindings Term
 reduceM = rewriteM g
   where
     g t = do
       bs <- get
       let r = case t of
-            -- beta cont
+            -- beta cont / eta cont
             (Continue k y) -> do
               (LetCont _ x c _) <- Map.lookup k bs
               pure $ replace x y c
@@ -57,5 +60,5 @@ reduceM = rewriteM g
       pure r
 
 reduce :: Term -> Term
-reduce t = evalState (reduceM t) Map.empty
+reduce t = evalState (reduceM t) (collect t)
 
