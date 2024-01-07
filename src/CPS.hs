@@ -56,7 +56,7 @@ nested = nest 2
 
 instance Pretty Value where
   pretty (Var n) = pretty n
-  pretty (I32 i) = pretty i
+  pretty (I32 i) = parens $ pretty "i32" <+> pretty i
   pretty Unit = pretty "()"
   pretty (Tuple es) = lparen <> concatWith (\x y -> x <> comma <+> y) (map pretty es) <> rparen
   pretty (Cont n t) = group (pretty "λ" <> pretty n <> dot <> pretty t)
@@ -66,7 +66,7 @@ instance Pretty Term where
   pretty (LetVal n v t) =
     group
       ( pretty
-          "let"
+          "Letval"
           <> nested
             ( line
                 <> pretty n
@@ -77,7 +77,7 @@ instance Pretty Term where
       )
       </> pretty t
   pretty (LetSel n i n' t) =
-    pretty "let"
+    pretty "Letsel"
       <+> pretty n
       <+> group
         ( nested
@@ -93,7 +93,7 @@ instance Pretty Term where
         </> pretty t
   pretty (LetCont k x c t) =
     group $
-      pretty "let"
+      pretty "Letcont"
         <> nested
           ( softline
               <> pretty k
@@ -107,12 +107,12 @@ instance Pretty Term where
           </> pretty "in"
           </> pretty t
   pretty (LetFns {}) = pretty "@"
-  pretty (Continue k x) = group (parens $ pretty k <+> pretty x)
+  pretty (Continue k x) = group (parens $ pretty "Continue" <+> pretty k <+> pretty x)
   pretty (Apply f k x) = group (parens $ pretty f <+> pretty k <+> pretty x)
   pretty (LetPrim n op ns t) =
     group
       ( pretty
-          "let"
+          "Letprim"
           <> nested
             ( line
                 <> pretty n

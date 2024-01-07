@@ -15,9 +15,20 @@ toCPS = translate . uniquify
 x = toCPS $ Let "id" (Abs "x" (Var "x")) (Let "x" (Const $ Integer 10) (Var "x"))
 sel = toCPS $ Let "xi" (Select 1 (Tuple [Const (Integer 1),Const (Integer 2)])) (Var "xi")
 
-z = parse 
-   "(let compute (lambda x (+ (- 114514 1) x)) (let data (tuple 1 2 3 4) (compute (select 2 data))))"
 
+
+
+
+
+
+z = parse 
+   "(let compute (lambda x (+ (- 5 1) x)) (let data (tuple 1 2 3 4) (compute (compute (select 2 data)))))"
+
+z1 =  
+   "(let f (lambda x (+ x 1)) (f (f (f 3))))"
+
+z2 = parse 
+   "(let f (lambda x x) (f 3))"
 
 main :: IO ()
 main = do 

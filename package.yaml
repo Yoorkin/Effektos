@@ -30,6 +30,7 @@ dependencies:
 - pretty-simple
 - comonad
 - prettyprinter >= 1.7.1
+- text
 
 ghc-options:
 - -Wall

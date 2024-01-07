@@ -2,11 +2,13 @@
 
 module Uniquify (uniquify) where
 
+import qualified CPS
 import Control.Lens
 import Control.Monad.State.Lazy as State
 import qualified Data.Map as Map
 import Data.Maybe
 import Lambda
+import Util (def, var)
 
 visit :: (Monad m, Plated a) => (a -> m a) -> (a -> m a) -> a -> m a
 visit f g x = g =<< mapMOf plate (visit f g) =<< f x
@@ -52,3 +54,4 @@ exit x = pure x
 
 uniquify :: Expr -> Expr
 uniquify e = evalState (visit enter exit e) (0, Map.empty)
+

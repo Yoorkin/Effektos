@@ -52,6 +52,7 @@ library
     , multimap
     , pretty-simple
     , prettyprinter >=1.7.1
+    , text
     , tuple >=0.3.0.2
   default-language: Haskell2010
 
@@ -75,6 +76,7 @@ executable cpsLab-exe
     , multimap
     , pretty-simple
     , prettyprinter >=1.7.1
+    , text
     , tuple >=0.3.0.2
   default-language: Haskell2010
 
@@ -99,5 +101,6 @@ test-suite cpsLab-test
     , multimap
     , pretty-simple
     , prettyprinter >=1.7.1
+    , text
     , tuple >=0.3.0.2
   default-language: Haskell2010

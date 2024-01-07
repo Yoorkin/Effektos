@@ -1,14 +1,14 @@
 {-# LANGUAGE LambdaCase #-}
 
-module DCE(eliminate) where
+module DCE where
 
 import CPS
-import Util(bound,occur)
+import Util(used, def)
 import Control.Lens (transform)
 import Data.List ((\\))
 
 unused :: Term -> [Name]
-unused e = bound e \\ occur e
+unused e = def e \\ used e
 
 eliminate :: Term -> Term
 eliminate a = if a == b then b else eliminate b
