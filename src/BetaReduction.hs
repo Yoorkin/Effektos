@@ -41,7 +41,7 @@ bindings :: Term -> [(Name, Term)]
 bindings t = case t of
   (LetVal n _ _) -> [(n, t)]
   (LetSel n _ _ _) -> [(n, t)]
-  (LetCont n _ _ _) -> [(n, t)]
+  (LetCont n _ _ _ _) -> [(n, t)]
   (LetFns fns _) -> map ((,t) . fst) fns
   (LetPrim n _ _ _) -> [(n, t)]
   _ -> []
@@ -74,8 +74,8 @@ simpVal :: Census -> Env -> Subst -> Value -> State Int Value
 simpVal census env s v = case v of
   Var n -> pure $ Var (applySubst s n)
   Tuple ns -> pure $ Tuple (map (applySubst s) ns)
-  Cont n l -> Cont n <$> simp census env s l
-  Fn k x l -> Fn k x <$> simp census env s l
+  Cont n mn l -> Cont n mn <$> simp census env s l
+  Fn k _ x l -> Fn k Nothing x <$> simp census env s l
   _ -> pure v
 
 inst :: Term -> State Int Term
@@ -111,26 +111,26 @@ simp census env s p =
        in case lookup env y' of
             Just (Tuple elems) -> simp census env (extendSubst s x (elems !! i)) l
             _ -> LetSel x i y' <$> simp census env s l
-    LetCont k x l m -> do
+    LetCont k _ x l m -> do
       l' <- simp census env s l
       case count census k of
         0 -> simp census env s m
         -- 1 -> simp census (addEnv env k (Cont x l')) s m
-        _ -> LetCont k x l' <$> simp census (addEnv env k (Cont x l')) s m
-    Continue k x ->
+        _ -> LetCont k Nothing x l' <$> simp census (addEnv env k (Cont Nothing x l')) s m
+    Continue k _ x ->
       let x' = applySubst s x
        in let k' = applySubst s k
            in case lookup env k' of
-                Just (Cont y l) -> inst l >>= simp census env (extendSubst s y x')
-                _ -> pure $ Continue k' x'
-    Apply f k xs ->
+                Just (Cont _ y l) -> inst l >>= simp census env (extendSubst s y x')
+                _ -> pure $ Continue k' Nothing x'
+    Apply f k _ xs ->
       let f' = applySubst s f
           k' = applySubst s k
           xs' = map (applySubst s) xs
        in case lookup env f' of
-            Just (Fn k1 xs1 l) ->
+            Just (Fn k1 _ xs1 l) ->
               inst l >>= simp census env (extendSubst (extendSubsts s (zip xs1 xs')) k1 k')
-            _ -> pure $ Apply f' k' xs'
+            _ -> pure $ Apply f' k' Nothing xs'
     LetPrim n op ns t ->
       let fallback = simp census env s t
        in if count census n == 0

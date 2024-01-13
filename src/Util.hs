@@ -4,24 +4,29 @@ module Util where
 
 import CPS
 import Control.Comonad.Store (pos)
-import Control.Lens (Traversal', contextsOn)
-import Control.Lens.Combinators (mapMOf, plate, universeOn)
+import Control.Lens (Traversal')
 import Control.Lens.Plated (Plated, universe)
-import Data.List ((\\))
+import Data.List ((\\),nub)
 import qualified Data.Map.Lazy as Map
 import Data.Maybe (fromMaybe)
+import Control.Lens.Traversal (mapMOf)
+import Control.Lens (Plated(..))
+import Control.Lens.Plated (contextsOn)
+import Control.Lens.Fold (toListOf)
+import Data.Foldable (toList)
 
 bound :: Term -> [Name]
-bound e = concatMap f (universe e)
+bound e = nub $ concatMap f (universe e)
   where
     f (LetVal n _ _) = [n]
     f (LetSel n _ _ _) = [n]
-    f (LetCont n1 n2 _ _) = [n1, n2]
+    f (LetCont n1 env n2 _ _) = toList env ++ [n1,n2]
     f (LetFns fns _) = map fst fns
+    f (LetPrim n _ _ _) = [n]
     f _ = []
 
 occur :: Term -> [Name]
-occur = filter ("" /=) . universeOn var
+occur = nub . toListOf var
 
 free :: Term -> [Name]
 free e = occur e \\ bound e
@@ -31,7 +36,7 @@ def t = concatMap f $ universe t
   where
     f (LetVal n _ _) = [n]
     f (LetSel n _ _ _) = [n]
-    f (LetCont n1 n2 _ _) = [n1, n2]
+    f (LetCont n1 env n2 _ _) = toList env ++ [n1,n2]
     f (LetFns fns _) = map fst fns
     f (LetPrim n _ _ _) = [n]
     f _ = []
@@ -44,8 +49,8 @@ used = concatMap f . universe
     f (LetSel _ _ n _) = [n]
     f (LetCont {}) = []
     f (LetFns {}) = []
-    f (Continue n1 n2) = [n1, n2]
-    f (Apply n1 n2 ns) = n1 : n2 : ns
+    f (Continue n1 env n2) = toList env ++ [n1, n2] 
+    f (Apply n1 n2 env ns) = toList env ++ n1 : n2 : ns
     f (LetPrim _ _ ns _) = ns
     f (Switch n _) = [n]
     f (Halt n) = [n]
@@ -69,19 +74,17 @@ var f = goExpr
     goExpr = \case
       (LetVal n v t) -> LetVal <$> f n <*> goValue v <*> goExpr t
       (LetSel n i n2 t) -> LetSel <$> f n <*> pure i <*> f n2 <*> goExpr t
-      (LetCont n1 n2  t1 t2) -> LetCont n1 n2 <$> goExpr t1 <*> goExpr t2
-      -- (LetCont n1 n2 t1 t2) -> LetCont <$> f n1 <*> f n2 <*> goExpr t1 <*> goExpr t2
+      (LetCont n1 mn n2 t1 t2) -> LetCont <$> f n1 <*> traverse f mn <*> f n2 <*> goExpr t1 <*> goExpr t2
       (LetFns fns t1) -> LetFns <$> traverse (\(a, b) -> (,) <$> f a <*> goValue b) fns <*> goExpr t1
-      (Continue n1 n2) -> Continue <$> f n1 <*> f n2
-      (Apply n1 n2 n3) -> Apply <$> f n1 <*> f n2 <*> traverse f n3
+      (Continue n1 mn n2) -> Continue <$> f n1 <*> traverse f mn <*> pure n2
+      (Apply n1 n2 env n3) -> Apply <$> f n1 <*> f n2 <*> traverse f env <*> traverse f n3
       (LetPrim n p ns t) -> LetPrim <$> f n <*> pure p <*> traverse f ns <*> goExpr t
       (Switch n ts) -> Switch <$> f n <*> traverse goExpr ts
       (Halt v) -> Halt <$> f v
-      x -> pure x
     goValue x = case x of
       (Var n) -> Var <$> f n
       (I32 _) -> pure x
       Unit -> pure x
       (Tuple xs) -> Tuple <$> traverse f xs
-      (Cont n t) -> Cont <$> f n <*> goExpr t
-      (Fn n1 n2 t) -> Fn <$> f n1 <*> traverse f n2 <*> goExpr t
+      (Cont mn n t) -> Cont <$> traverse f mn <*> f n <*> goExpr t
+      (Fn n1 env n2 t) -> Fn <$> f n1 <*> traverse f env <*> traverse f n2 <*> goExpr t

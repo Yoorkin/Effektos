@@ -17,10 +17,6 @@ sel = toCPS $ Let "xi" (Select 1 (Tuple [Const (Integer 1),Const (Integer 2)])) 
 
 
 
-
-
-
-
 z = parse 
    "(let compute (lambda x (+ (- 5 1) x)) (let data (tuple 1 2 3 4) (compute (compute (select 2 data)))))"
 

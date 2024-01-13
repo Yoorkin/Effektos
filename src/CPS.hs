@@ -17,24 +17,24 @@ data Value
   | I32 Int
   | Unit
   | Tuple [Name]
-  | Cont Name Term -- k e
-  | Fn Name [Name] Term -- k x e
+  | Cont (Maybe Name) Name Term -- x e
+  | Fn Name (Maybe Name) [Name] Term -- k x e
   deriving (Eq, Ord, Read, Data)
 
 data Term
   = LetVal Name Value Term
   | LetSel Name Int Name Term -- TODO: Value to String, the Value should be (Var x)
-  | LetCont Name Name Term Term
+  | LetCont Name (Maybe Name) Name Term Term
   | LetFns [(Name, Value)] Term
-  | Continue Name Name
-  | Apply Name Name [Name]
+  | Continue Name (Maybe Name) Name
+  | Apply Name Name (Maybe Name) [Name]
   | LetPrim Name L.Primitive [Name] Term
   | Switch Name [Term]
   | Halt Name
   deriving (Eq, Ord, Read, Data)
 
 renderDoc :: Doc ann -> String
-renderDoc = renderString . layoutPretty defaultLayoutOptions
+renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
 
 instance Show Value where
   show = renderDoc . pretty
@@ -56,11 +56,11 @@ nested = nest 2
 
 instance Pretty Value where
   pretty (Var n) = pretty n
-  pretty (I32 i) = parens $ pretty "i32" <+> pretty i
+  pretty (I32 i) = pretty "i32" <+> pretty i
   pretty Unit = pretty "()"
   pretty (Tuple es) = lparen <> concatWith (\x y -> x <> comma <+> y) (map pretty es) <> rparen
-  pretty (Cont n t) = group (pretty "λ" <> pretty n <> dot <> pretty t)
-  pretty (Fn k x t) = group (parens $ pretty "λ" <+> pretty k <+> pretty x <+> dot <> nested (line <> pretty t))
+  pretty (Cont env n t) = group (pretty "λ" <> pretty env <+> pretty n <> dot <> pretty t)
+  pretty (Fn k env x t) = group (parens $ pretty "λ" <+> pretty k <+> pretty env <+> pretty x <+> dot <> nested (line <> pretty t))
 
 instance Pretty Term where
   pretty (LetVal n v t) =
@@ -82,21 +82,21 @@ instance Pretty Term where
       <+> group
         ( nested
             ( pretty "="
-                </> parens
-                  ( pretty "select"
-                      <+> pretty i
-                      <+> pretty n'
-                  )
+                </> ( pretty "select"
+                        <+> pretty i
+                        <+> pretty n'
+                    )
             )
             </> pretty "in"
         )
         </> pretty t
-  pretty (LetCont k x c t) =
+  pretty (LetCont k env x c t) =
     group $
       pretty "Letcont"
         <> nested
           ( softline
               <> pretty k
+              <+> pretty env
               <+> pretty x
               <+> pretty "="
               <> nested
@@ -107,8 +107,8 @@ instance Pretty Term where
           </> pretty "in"
           </> pretty t
   pretty (LetFns {}) = pretty "@"
-  pretty (Continue k x) = group (parens $ pretty "Continue" <+> pretty k <+> pretty x)
-  pretty (Apply f k x) = group (parens $ pretty f <+> pretty k <+> pretty x)
+  pretty (Continue k env x) = group (pretty "Continue" <+> pretty k <+> pretty env <+> pretty x)
+  pretty (Apply f k env x) = group (pretty f <+> pretty k <+> pretty env <+> pretty x)
   pretty (LetPrim n op ns t) =
     group
       ( pretty
@@ -131,7 +131,7 @@ instance Pretty Term where
       )
       </> pretty t
   pretty (Switch {}) = pretty "@"
-  pretty (Halt e) = group (parens $ pretty "halt" </> pretty e)
+  pretty (Halt e) = group (pretty "halt" </> pretty e)
 
 -- value :: Traversal' Term Value
 -- value f = goExpr

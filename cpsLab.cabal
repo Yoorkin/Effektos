@@ -30,6 +30,8 @@ library
       ClosureCPS
       CPS
       DCE
+      Flat
+      HoistToFlat
       Lambda
       Lib
       Parser

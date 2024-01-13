@@ -21,11 +21,11 @@ trans (L.Abs x e) kont =
   do
     f <- uniqueName "f"
     k <- uniqueName "k"
-    LetVal f <$> (Fn k [x] <$> trans e (pure . Continue k)) <*> kont f
+    LetVal f <$> (Fn k Nothing [x] <$> trans e (pure . Continue k Nothing)) <*> kont f
 trans (L.Let x e1 e2) kont =
   do
     j <- uniqueName "j"
-    LetCont j x <$> trans e2 kont <*> trans e1 (pure . Continue j)
+    LetCont j Nothing x <$> trans e2 kont <*> trans e1 (pure . Continue j Nothing)
 trans (L.App e1 e2) kont =
   do
     k <- uniqueName "k"
@@ -36,7 +36,7 @@ trans (L.App e1 e2) kont =
           trans
             e2
             ( \e2 ->
-                LetCont k x <$> kont x <*> pure (Apply e1 k [e2])
+                LetCont k Nothing x <$> kont x <*> pure (Apply e1 k Nothing [e2])
             )
       )
 trans (L.Const c) kont = do
@@ -71,8 +71,8 @@ trans (L.Fix fs e') kont =
   let g ((n, (x, e)) : fs) acc = do
         x <- uniqueName x
         k <- uniqueName "k"
-        e <- trans e (pure . Continue k)
-        g fs ((n, Fn k [x] e) : acc)
+        e <- trans e (pure . Continue k Nothing)
+        g fs ((n, Fn k Nothing [x] e) : acc)
       g [] acc = LetFns (reverse acc) <$> trans e' kont
    in g fs []
 
