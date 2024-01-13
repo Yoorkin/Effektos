@@ -18,7 +18,7 @@ data Value
   | Unit
   | Tuple [Name]
   | Cont Name Term -- k e
-  | Fn Name Name Term -- k x e
+  | Fn Name [Name] Term -- k x e
   deriving (Eq, Ord, Read, Data)
 
 data Term
@@ -27,7 +27,7 @@ data Term
   | LetCont Name Name Term Term
   | LetFns [(Name, Value)] Term
   | Continue Name Name
-  | Apply Name Name Name
+  | Apply Name Name [Name]
   | LetPrim Name L.Primitive [Name] Term
   | Switch Name [Term]
   | Halt Name

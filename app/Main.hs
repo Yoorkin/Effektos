@@ -25,7 +25,7 @@ z = parse
    "(let compute (lambda x (+ (- 5 1) x)) (let data (tuple 1 2 3 4) (compute (compute (select 2 data)))))"
 
 z1 =  
-   "(let f (lambda x (+ x 1)) (f (f (f 3))))"
+   parse "(let f (lambda x (+ x 1)) (f (f (f 3))))"
 
 z2 = parse 
    "(let f (lambda x x) (f 3))"

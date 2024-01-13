@@ -13,7 +13,7 @@ uniqueName :: String -> State Env String
 uniqueName n = do
   i <- get
   modify (+ 1)
-  pure $ "" ++ n ++ show i
+  pure $ n ++ show i
 
 trans :: L.Expr -> (Name -> State Env Term) -> State Env Term
 trans (L.Var n) kont = kont n
@@ -21,7 +21,7 @@ trans (L.Abs x e) kont =
   do
     f <- uniqueName "f"
     k <- uniqueName "k"
-    LetVal f <$> (Fn k x <$> trans e (pure . Continue k)) <*> kont f
+    LetVal f <$> (Fn k [x] <$> trans e (pure . Continue k)) <*> kont f
 trans (L.Let x e1 e2) kont =
   do
     j <- uniqueName "j"
@@ -36,7 +36,7 @@ trans (L.App e1 e2) kont =
           trans
             e2
             ( \e2 ->
-                LetCont k x <$> kont x <*> pure (Apply e1 k e2)
+                LetCont k x <$> kont x <*> pure (Apply e1 k [e2])
             )
       )
 trans (L.Const c) kont = do
@@ -72,7 +72,7 @@ trans (L.Fix fs e') kont =
         x <- uniqueName x
         k <- uniqueName "k"
         e <- trans e (pure . Continue k)
-        g fs ((n, Fn k x e) : acc)
+        g fs ((n, Fn k [x] e) : acc)
       g [] acc = LetFns (reverse acc) <$> trans e' kont
    in g fs []
 
