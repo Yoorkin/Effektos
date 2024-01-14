@@ -49,7 +49,7 @@ transClosure stamp t = evalState (transformM f t) stamp
       nfvars <- mapM fresh fvars
       let code = k ++ "_code"
       let env = k ++ "_env"
-      let l' = wrapProj env nfvars (renames nfvars fvars l)
+      let l' = wrapProj env nfvars (renames fvars nfvars l)
       pure $ LetCont code (Just env) x l' (LetVal k (Tuple (code : fvars)) m)
     f (Continue k _ x) = do
       kname <- fresh k
