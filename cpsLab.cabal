@@ -31,6 +31,7 @@ library
       CPS
       DCE
       Flat
+      Flatvm
       HoistToFlat
       Lambda
       Lib
