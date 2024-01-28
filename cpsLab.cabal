@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -18,6 +18,8 @@ build-type:     Simple
 extra-source-files:
     README.md
     CHANGELOG.md
+    src/Lexer.x
+    src/Parser.y
 
 source-repository head
   type: git
@@ -34,9 +36,12 @@ library
       Flatvm
       HoistToFlat
       Lambda
+      Lexer
       Lib
       Parser
+      ParseUtils
       Sexp
+      Syntax
       TransToCPS
       Uniquify
       Util
@@ -49,6 +54,7 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       adjunctions
+    , array
     , base >=4.7 && <5
     , comonad
     , containers >=0.6.7
@@ -72,6 +78,7 @@ executable cpsLab-exe
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       adjunctions
+    , array
     , base >=4.7 && <5
     , comonad
     , containers >=0.6.7
@@ -97,6 +104,7 @@ test-suite cpsLab-test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       adjunctions
+    , array
     , base >=4.7 && <5
     , comonad
     , containers >=0.6.7
