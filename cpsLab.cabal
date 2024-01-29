@@ -30,6 +30,7 @@ library
       BetaReduction
       ClosureConversion
       ClosureCPS
+      Constant
       CPS
       DCE
       Flat
@@ -40,8 +41,10 @@ library
       Lib
       Parser
       ParseUtils
+      Primitive
       Sexp
       Syntax
+      SyntaxToLambda
       TransToCPS
       Uniquify
       Util

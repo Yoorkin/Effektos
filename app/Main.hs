@@ -15,9 +15,6 @@ import Lexer(tokenize,Token(..))
 
 toCPS = translate . uniquify 
 
-x = toCPS $ Let "id" (Abs "x" (Var "x")) (Let "x" (Const $ Integer 10) (Var "x"))
-sel = toCPS $ Let "xi" (Select 1 (Tuple [Const (Integer 1),Const (Integer 2)])) (Var "xi")
-
 z = parse . tokenize $ "let compute = fun x -> 5-1+x in let dat = (1,2,3,4) in compute (compute (get2 dat))"
 
 z1 =  
@@ -44,5 +41,5 @@ eff1 =
 
 main :: IO ()
 main = do 
-        pPrint $ x
+        pPrint $ eff1
 -- print $ translate $ Fix [("id", ("x",(Var "x")))] $ (App (Var "id") (Var "x"))

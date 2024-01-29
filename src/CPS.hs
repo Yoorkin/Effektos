@@ -9,6 +9,7 @@ import Data.Data.Lens
 import qualified Lambda as L
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
+import Primitive
 
 type Name = String
 
@@ -28,7 +29,7 @@ data Term
   | LetFns [(Name, Value)] Term
   | Continue Name (Maybe Name) Name
   | Apply Name Name (Maybe Name) [Name]
-  | LetPrim Name L.Primitive [Name] Term
+  | LetPrim Name Primitive [Name] Term
   | Switch Name [Term]
   | Halt Name
   deriving (Eq, Ord, Read, Data)

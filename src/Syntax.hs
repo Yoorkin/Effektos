@@ -1,4 +1,6 @@
 module Syntax where
+import Primitive
+import Constant
 
 data Program
   = Program Expr
@@ -32,26 +34,4 @@ data Expr
   | Resume Expr Expr
   deriving (Show)
 
-data Constant
-  = Integer Int
-  | Boolean Bool
-  | Unit
-  deriving (Show)
 
-data Primitive
-  = Add1
-  | Sub1
-  | Add2
-  | Sub2
-  | Mul
-  | Div
-  | GT
-  | GE
-  | NE
-  | EQ
-  | LE
-  | LT
-  | Not
-  | And
-  | Xor
-  deriving (Show)

@@ -3,6 +3,7 @@
 module ParseUtils where
 import Lexer
 import Syntax
+import Primitive as Op
 
 parseError :: [Token] -> a
 parseError tokens = error $ "Parse error: " ++ show (take 10 tokens)
@@ -20,11 +21,11 @@ selectPrimOp (Token _ _ _ (Symbol x)) =
         "-" -> Sub2
         "*" -> Mul
         "/" -> Div
-        ">" -> Syntax.GT
-        "<" -> Syntax.LT
+        ">" -> Op.GT
+        "<" -> Op.LT
         ">=" -> GE
         "<=" -> LE
-        "=" -> Syntax.EQ
+        "=" -> Op.EQ
         "<>" -> NE
         _ -> error $ show x
 selectPrimOp _ = error ""

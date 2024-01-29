@@ -4,7 +4,7 @@ module Parser(parse) where
 import Syntax as Syntax
 import Lexer
 import ParseUtils
-
+import Constant as Const
 }
 
 %name parse Start
@@ -134,7 +134,7 @@ Atom : IDENT                                     { Var $1 }
      | Atom ':' Type                             { Anno $1 $3 }
      | Constant                                  { Syntax.Const $1 }
 
-Constant : INT          { Syntax.Integer $1 }
-         | BOOL         { Syntax.Boolean $1 }
+Constant : INT          { Const.Integer $1 }
+         | BOOL         { Const.Boolean $1 }
 
 

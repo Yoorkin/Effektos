@@ -7,7 +7,7 @@ import qualified Data.Map.Lazy as Map
 import Data.Maybe (fromJust)
 import Debug.Trace (traceShowId, traceWith)
 import Flat
-import Lambda (Primitive (..))
+import Primitive
 
 data RtValue
   = RtTuple [RtValue]

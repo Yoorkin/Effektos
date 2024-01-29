@@ -6,6 +6,7 @@ module TransToCPS (translate) where
 import CPS
 import Control.Monad.State.Lazy
 import qualified Lambda as L
+import Constant as Const
 
 type Env = Int
 
@@ -42,7 +43,7 @@ trans (L.App e1 e2) kont =
 trans (L.Const c) kont = do
   constant <- uniqueName "c"
   let v = case c of
-        L.Integer v -> I32 v
+        Const.Integer v -> I32 v
   LetVal constant v <$> kont constant
 trans (L.Tuple xs) kont = do
   tuple <- uniqueName "t"
@@ -67,14 +68,14 @@ trans (L.Decon rep e) kont =
   case rep of
     L.TaggedRep _ ->
       trans (L.Select 1 e) kont
-trans (L.Fix fs e') kont =
+trans (L.Fix ns fs e') kont =
   let g ((n, (x, e)) : fs) acc = do
         x <- uniqueName x
         k <- uniqueName "k"
         e <- trans e (pure . Continue k Nothing)
         g fs ((n, Fn k Nothing [x] e) : acc)
       g [] acc = LetFns (reverse acc) <$> trans e' kont
-   in g fs []
+   in g (zip ns fs) []
 
 -- trans (L.Switch e case default) =
 --   trans e (\e ->

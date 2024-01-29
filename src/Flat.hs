@@ -1,6 +1,6 @@
 module Flat where
 
-import Lambda (Primitive)
+import Primitive
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 

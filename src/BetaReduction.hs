@@ -14,7 +14,7 @@ import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Text.Lazy (unpack)
 import Debug.Trace
-import Lambda (Primitive (..))
+import Primitive
 import qualified Lambda as L
 import Text.Pretty.Simple (pPrint, pShow)
 import Uniquify
