@@ -18,8 +18,8 @@ data Value
   | I32 Int
   | Unit
   | Tuple [Name]
-  | Cont (Maybe Name) Name Term -- x e
-  | Fn Name (Maybe Name) [Name] Term -- k x e
+  | Cont (Maybe Name) Name Term -- env x e
+  | Fn Name (Maybe Name) [Name] Term -- k env x e
   deriving (Eq, Ord, Read, Data)
 
 data Term
@@ -31,6 +31,8 @@ data Term
   | Apply Name Name (Maybe Name) [Name]
   | LetPrim Name Primitive [Name] Term
   | Switch Name [Term]
+  | Handle Name Name Term -- h fn
+  | Raise Name Name (Maybe Name) [Name] -- h k x
   | Halt Name
   deriving (Eq, Ord, Read, Data)
 
@@ -107,7 +109,6 @@ instance Pretty Term where
           )
           </> pretty "in"
           </> pretty t
-  pretty (LetFns {}) = pretty "@"
   pretty (Continue k env x) = group (pretty "Continue" <+> pretty k <+> pretty env <+> pretty x)
   pretty (Apply f k env x) = group (pretty f <+> pretty k <+> pretty env <+> pretty x)
   pretty (LetPrim n op ns t) =
@@ -131,26 +132,10 @@ instance Pretty Term where
             </> pretty "in"
       )
       </> pretty t
-  pretty (Switch {}) = pretty "@"
   pretty (Halt e) = group (pretty "halt" </> pretty e)
-
--- value :: Traversal' Term Value
--- value f = goExpr
---   where
---     goValue x = case x of
---       (Var _) -> f x
---       (I32 _) -> f x
---       Unit -> f x
---       (Tuple xs) -> (Tuple <$> traverse f xs) *> f x
---       (Cont n t) -> (Cont n <$> goExpr t) *> f x
---       (Fn n1 n2 t) -> (Fn n1 n2 <$> goExpr t) *> f x
---     goExpr x = case x of
---       (LetVal n v t) -> LetVal n <$> goValue v <*> goExpr t
---       (LetSel n i v t) -> LetSel n i <$> goValue v <*> goExpr t
---       (LetCont n1 n2 t1 t2) -> LetCont n1 n2 <$> goExpr t1 <*> goExpr t2
---       (LetFns fns t1) -> LetFns <$> traverse (\(a, b) -> (,) a <$> goValue b) fns <*> goExpr t1
---       (Continue v1 v2) -> Continue <$> goValue v1 <*> goValue v2
---       (Apply v1 v2 v3) -> Apply <$> goValue v1 <*> goValue v2 <*> goValue v3
---       (LetPrim n p vs t) -> LetPrim n p <$> traverse goValue vs <*> goExpr t
---       (Switch v ts) -> Switch <$> goValue v <*> traverse goExpr ts
---       (Halt v) -> Halt <$> goValue v
+  pretty (Handle h hf l) = group (pretty "handle" <+> pretty h <+> pretty hf <+> pretty "in" <> nest 2 (line <> pretty l))
+  pretty (Raise h k env xs) = group (pretty "raise" <+> pretty h <+> pretty k <+> pretty env <+> pretty xs)
+  pretty (LetFns fns l) = group (pretty "let rec" <+> nest 2 (concatWith (</>) (map g fns)) <+> pretty "in" </> pretty l)
+    where
+      g (n, v) = group (pretty n <+> pretty "=" <+> pretty v)
+  pretty (Switch {}) = error "switch err"

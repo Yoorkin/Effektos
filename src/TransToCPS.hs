@@ -1,12 +1,11 @@
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module TransToCPS (translate) where
 
 import CPS
+import qualified Constant as Const
 import Control.Monad.State.Lazy
 import qualified Lambda as L
-import Constant as Const
 
 type Env = Int
 
@@ -44,6 +43,8 @@ trans (L.Const c) kont = do
   constant <- uniqueName "c"
   let v = case c of
         Const.Integer v -> I32 v
+        Const.Unit -> Unit
+        Const.Boolean v -> if v then I32 1 else I32 0
   LetVal constant v <$> kont constant
 trans (L.Tuple xs) kont = do
   tuple <- uniqueName "t"
@@ -76,10 +77,18 @@ trans (L.Fix ns fs e') kont =
         g fs ((n, Fn k Nothing [x] e) : acc)
       g [] acc = LetFns (reverse acc) <$> trans e' kont
    in g (zip ns fs) []
-
--- trans (L.Switch e case default) =
---   trans e (\e ->
---     let f (c:cs)  )
+trans (L.Handle e hs) kont =
+  let g ((h, x, hk, e) : hs') = do
+        hf <- uniqueName "h"
+        k <- uniqueName "k"
+        hbody <- trans e (pure . Continue k Nothing)
+        LetVal hf (Fn k Nothing [x, hk] hbody) <$> (Handle h hf <$> g hs')
+      g [] = trans e kont
+   in g hs
+trans (L.Switch {}) _ = error "switch"
+-- trans (L.Resume c a) kont = trans c (\c' -> trans a (pure . Continue c' Nothing)) 
+-- should be function application instead of `Continue`. 
+-- Because the handler function is a normal function, not a continuation
 
 translate :: L.Expr -> Term
 translate e = evalState (trans e (pure . Halt)) 0
