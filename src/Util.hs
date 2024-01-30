@@ -8,7 +8,7 @@ import Control.Lens (Traversal')
 import Control.Lens.Plated (Plated, universe)
 import Data.List ((\\),nub)
 import qualified Data.Map.Lazy as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, maybeToList)
 import Control.Lens.Traversal (mapMOf)
 import Control.Lens (Plated(..))
 import Control.Lens.Plated (contextsOn)
@@ -52,8 +52,11 @@ used = concatMap f . universe
     f (Continue n1 env n2) = toList env ++ [n1, n2] 
     f (Apply n1 n2 env ns) = toList env ++ n1 : n2 : ns
     f (LetPrim _ _ ns _) = ns
-    f (Switch n _) = [n]
+    f (Switch n _ _ _) = [n]
     f (Halt n) = [n]
+    f (Handle n1 n2 _) = [n1,n2]
+    f (Raise n1 n2 mn ns) = maybeToList mn ++ n1:n2:ns 
+
 
 usage :: Term -> Map.Map Name Int
 usage = f Map.empty . map pos . contextsOn var
@@ -79,8 +82,10 @@ var f = goExpr
       (Continue n1 mn n2) -> Continue <$> f n1 <*> traverse f mn <*> pure n2
       (Apply n1 n2 env n3) -> Apply <$> f n1 <*> f n2 <*> traverse f env <*> traverse f n3
       (LetPrim n p ns t) -> LetPrim <$> f n <*> pure p <*> traverse f ns <*> goExpr t
-      (Switch n ts) -> Switch <$> f n <*> traverse goExpr ts
+      (Switch n index bs fb) -> Switch <$> f n <*> pure index <*> traverse goExpr bs <*> traverse goExpr fb
       (Halt v) -> Halt <$> f v
+      (Handle h fn t) -> Handle <$> f h <*> f fn <*> goExpr t
+      (Raise h k env x) -> Raise <$> f h <*> f k <*> traverse f env <*> traverse f x
     goValue x = case x of
       (Var n) -> Var <$> f n
       (I32 _) -> pure x

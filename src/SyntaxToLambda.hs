@@ -13,8 +13,8 @@ constToInt (Integer i) = i
 constToInt (Boolean b) = if b then 1 else 0
 constToInt Unit = 0
 
-fresh :: State Int String
-fresh = state (\i -> ("$n" ++ show i, i + 1))
+fresh :: String -> State Int String
+fresh n = state (\i -> (n ++ show i, i + 1))
 
 transExpr :: Expr -> State Int L.Expr
 transExpr expr = case expr of
@@ -35,7 +35,7 @@ transExpr expr = case expr of
   (Prim op es) -> L.PrimOp op <$> mapM transExpr es
   (Anno e _) -> transExpr e
   (Const c) -> pure $ L.Const c
-  (Sequence e1 e2) -> L.Let <$> fresh <*> transExpr e1 <*> transExpr e2
+  (Sequence e1 e2) -> L.Let <$> fresh "seq" <*> transExpr e1 <*> transExpr e2
   Hole -> error ""
   (Handle e hds) ->
     let f (a, b, c, m) = (a,b,c,) <$> transExpr m in L.Handle <$> transExpr e <*> mapM f hds

@@ -1,8 +1,8 @@
 module Flat where
 
-import Primitive
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
+import Primitive
 
 type Name = String
 
@@ -35,7 +35,7 @@ instance Pretty Value where
 
 data Expr
   = Apply Name [Name]
-  | Switch Name [Expr]
+  | Switch Name [Int] [Expr] (Maybe Expr)
   | Exit Name
   deriving (Show)
 
@@ -63,11 +63,12 @@ instance Pretty Fn where
 
 instance Pretty Expr where
   pretty (Apply f args) = pretty f <> parens (sepMapBy (comma <> space) pretty args)
-  pretty (Switch cond cases) =
+  pretty (Switch cond index branches fallback) =
     pretty "switch"
       <+> pretty cond
       <> colon
-      <> nested (hardline <> sepMapBy hardline f (zip [0 ..] cases))
+      <> nested (hardline <> sepMapBy hardline f (zip index branches))
+      <> case fallback of (Just f) -> pretty "_ ->" <+> pretty f; Nothing -> pretty ""
     where
       f (i, e) = pretty (i :: Int) <+> pretty "->" <+> pretty e
   pretty (Exit n) = pretty "exit" <+> pretty n

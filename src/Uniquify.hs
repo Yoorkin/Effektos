@@ -37,6 +37,7 @@ enter (Let old e1 e2) =
         s = (i + 1, push old new mp)
      in (Let old e1 e2, s)
 enter (Var old) = gets $ \(_, mp) -> Var (fromMaybe old (top old mp))
+enter (Handle e hds) = 
 enter x = pure x
 exit (Abs old e) =
   state $

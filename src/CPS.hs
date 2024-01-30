@@ -30,7 +30,7 @@ data Term
   | Continue Name (Maybe Name) Name
   | Apply Name Name (Maybe Name) [Name]
   | LetPrim Name Primitive [Name] Term
-  | Switch Name [Term]
+  | Switch Name [Int] [Term] (Maybe Term)
   | Handle Name Name Term -- h fn
   | Raise Name Name (Maybe Name) [Name] -- h k x
   | Halt Name
@@ -62,8 +62,8 @@ instance Pretty Value where
   pretty (I32 i) = pretty "i32" <+> pretty i
   pretty Unit = pretty "()"
   pretty (Tuple es) = lparen <> concatWith (\x y -> x <> comma <+> y) (map pretty es) <> rparen
-  pretty (Cont env n t) = group (pretty "λ" <> pretty env <+> pretty n <> dot <> pretty t)
-  pretty (Fn k env x t) = group (parens $ pretty "λ" <+> pretty k <+> pretty env <+> pretty x <+> dot <> nested (line <> pretty t))
+  pretty (Cont env n t) = group (pretty "λ" <> braces (pretty env) <+> pretty n <> dot <> pretty t)
+  pretty (Fn k env x t) = group (parens $ pretty "λ" <+> pretty k <+> braces (pretty env) <+> pretty x <+> dot <> nested (line <> pretty t))
 
 instance Pretty Term where
   pretty (LetVal n v t) =
@@ -99,7 +99,7 @@ instance Pretty Term where
         <> nested
           ( softline
               <> pretty k
-              <+> pretty env
+              <+> braces (pretty env)
               <+> pretty x
               <+> pretty "="
               <> nested
@@ -109,8 +109,8 @@ instance Pretty Term where
           )
           </> pretty "in"
           </> pretty t
-  pretty (Continue k env x) = group (pretty "Continue" <+> pretty k <+> pretty env <+> pretty x)
-  pretty (Apply f k env x) = group (pretty f <+> pretty k <+> pretty env <+> pretty x)
+  pretty (Continue k env x) = group (pretty "Continue" <+> pretty k <+> braces (pretty env) <+> pretty x)
+  pretty (Apply f k env x) = group (pretty f <+> pretty k <+> braces (pretty env) <+> pretty x)
   pretty (LetPrim n op ns t) =
     group
       ( pretty
@@ -134,8 +134,17 @@ instance Pretty Term where
       </> pretty t
   pretty (Halt e) = group (pretty "halt" </> pretty e)
   pretty (Handle h hf l) = group (pretty "handle" <+> pretty h <+> pretty hf <+> pretty "in" <> nest 2 (line <> pretty l))
-  pretty (Raise h k env xs) = group (pretty "raise" <+> pretty h <+> pretty k <+> pretty env <+> pretty xs)
+  pretty (Raise h k env xs) = group (pretty "raise" <+> pretty h <+> pretty k <+> braces (pretty env) <+> pretty xs)
   pretty (LetFns fns l) = group (pretty "let rec" <+> nest 2 (concatWith (</>) (map g fns)) <+> pretty "in" </> pretty l)
     where
       g (n, v) = group (pretty n <+> pretty "=" <+> pretty v)
-  pretty (Switch {}) = error "switch err"
+  pretty (Switch n ix bs fb) =
+    pretty "switch"
+      <+> pretty n
+      <> colon
+      <> nested (hardline <> sepMapBy hardline f (zip ix bs))
+      <> case fb of (Just fb') -> pretty "_ ->" <+> align (pretty fb'); Nothing -> emptyDoc
+    where
+      f (i, e) = pretty i <+> pretty "->" <+> align (pretty e)
+
+sepMapBy sep f xs = concatWith (\a b -> a <> sep <> b) (map f xs)

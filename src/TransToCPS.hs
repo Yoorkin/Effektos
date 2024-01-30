@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module TransToCPS (translate) where
@@ -85,9 +86,23 @@ trans (L.Handle e hs) kont =
         LetVal hf (Fn k Nothing [x, hk] hbody) <$> (Handle h hf <$> g hs')
       g [] = trans e kont
    in g hs
-trans (L.Switch {}) _ = error "switch"
--- trans (L.Resume c a) kont = trans c (\c' -> trans a (pure . Continue c' Nothing)) 
--- should be function application instead of `Continue`. 
+trans (L.Switch cond cases fallback) kont = do
+  k <- uniqueName "k"
+  x <- uniqueName "x"
+  let (index, branches) = unzip cases
+  let g branch = trans branch (pure . Continue k Nothing)
+  let branches' = mapM g branches
+  let fallback' = mapM g fallback
+  trans
+    cond
+    ( \cond' ->
+        LetCont k Nothing x
+          <$> kont x
+          <*> (Switch cond' index <$> branches' <*> fallback')
+    )
+
+-- trans (L.Resume c a) kont = trans c (\c' -> trans a (pure . Continue c' Nothing))
+-- should be function application instead of `Continue`.
 -- Because the handler function is a normal function, not a continuation
 
 translate :: L.Expr -> Term

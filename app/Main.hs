@@ -25,8 +25,8 @@ z2 = parse . tokenize $ "let f = fun x -> x in f 3"
 eff = parse . tokenize $ 
         "let rec consoleHandler = fun e -> \
         \   handle e with \
-        \   | Print(x,k) -> (output x; consoleHandler (k ())) \
-        \   | Input(x,k) -> (consoleHandler (k ())) \
+        \   | Print(x,k) -> k () \
+        \   | Input(x,k) -> k 5 \
         \in \
         \let rec loop = fun n -> if n > 0 then (Print n; loop (n-1)) else () in \
         \consoleHandler (loop 5)"     

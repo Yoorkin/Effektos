@@ -56,10 +56,10 @@ eval env e@(Apply f args) =
               env' = evalBindings (xs `Map.union` env) bs
            in eval env' e
     _ -> error "invalid function"
-eval env (Switch n es) =
-  case Map.lookup n env of
-    (Just (RtI32 i)) -> eval env (es !! i)
-    _ -> error "invalid condition"
+-- eval env (Switch n es) =
+--   case Map.lookup n env of
+--     (Just (RtI32 i)) -> eval env (es !! i)
+--     _ -> error "invalid condition"
 eval env (Exit n) = fromJust $ Map.lookup n env
 
 run :: Program -> RtValue
