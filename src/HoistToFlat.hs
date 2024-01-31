@@ -61,6 +61,11 @@ toFlat (Switch cond index branches fallback) =
             Nothing ->
               (fs, bs, F.Switch cond index es Nothing)
 toFlat (Halt n) = ([], [], F.Exit n)
+toFlat (Handle h f l) =
+  let (fs, bs, e) = toFlat l
+   in (fs, bs, F.Handle h f e)
+toFlat (Raise h k (Just env) args) =
+  ([], [], F.Raise h (k : env : args))
 toFlat _ = error ""
 
 hoistToFlat :: Term -> F.Program

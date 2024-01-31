@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module ClosureConversion where
 
 import CPS
@@ -55,6 +57,28 @@ transClosure stamp t = evalState (transformM f t) stamp
       kname <- fresh k
       let env = k
       pure $ LetSel kname 0 env (Continue kname (Just env) x)
+    f (LetFns fns l) =
+      let collectVars fv nfv = \case
+            ((_, Fn k Nothing xs m) : fns') -> do
+              let fv' = free m \\ (k : xs)
+              nfv' <- mapM fresh fv'
+              collectVars fv' nfv' fns'
+            [] -> pure (reverse fv, reverse nfv)
+            _ -> error ""
+
+          transFnBody fv nfv acc = \case
+            ((n, Fn k Nothing xs m) : fns') ->
+              let code = k ++ "_code"
+                  env = k ++ "_env"
+                  -- FIX: exclude Handlers name from closure
+                  m' = wrapProj env nfv (renames fv nfv m)
+               in transFnBody fv nfv ((n, Fn code (Just env) xs m') : acc) fns'
+            [] -> reverse acc
+            _ -> error ""
+       in do
+            (fvars, nfvars) <- collectVars [] [] fns
+            pure $ LetFns (transFnBody fvars nfvars [] fns) l
     f x = pure x
 
+    fresh :: Name -> State Int Name
     fresh x = state (\i -> (x ++ "_" ++ show i, i + 1))

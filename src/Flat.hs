@@ -36,6 +36,8 @@ instance Pretty Value where
 data Expr
   = Apply Name [Name]
   | Switch Name [Int] [Expr] (Maybe Expr)
+  | Handle Name Name Expr
+  | Raise Name [Name]
   | Exit Name
   deriving (Show)
 
