@@ -20,6 +20,8 @@ import Text.Pretty.Simple (pPrint, pShow)
 import Uniquify
 import Util (def, usage, var)
 import Prelude hiding (lookup)
+import Data.Bifunctor (Bifunctor(second))
+import GHC.Base (assert)
 
 -- replace :: Name -> Name -> Term -> Term
 -- replace s t = transformOn var f
@@ -117,6 +119,10 @@ simp census env s p =
         0 -> simp census env s m
         -- 1 -> simp census (addEnv env k (Cont x l')) s m
         _ -> LetCont k Nothing x l' <$> simp census (addEnv env k (Cont Nothing x l')) s m
+    LetFns fns m -> do
+      fns' <- mapM (\(x,b) -> (x,) <$> simpVal census env s b) fns
+      m' <- simp census env s m
+      pure $ LetFns fns' m'
     Continue k _ x ->
       let x' = applySubst s x
        in let k' = applySubst s k
@@ -141,43 +147,25 @@ simp census env s p =
                     (Add2, Just [I32 a, I32 b]) ->
                       let v = I32 $ a + b in LetVal n v <$> simp census (addEnv env n v) s t
                     _ -> LetPrim n op ns' <$> fallback
+    Handle h f e -> 
+      let h' = applySubst s h
+          f' = applySubst s f
+          e' = simp census env s e
+       in Handle h' f' <$> e'
+
     Halt n ->
       pure $
         Halt (applySubst s n)
     x -> pure x
 
-simplify :: Term -> Term
-simplify p = evalState (simp census Map.empty Map.empty p) 100
+simplify' :: Term -> Term
+simplify' p = evalState (simp census Map.empty Map.empty p) 100
   where
     census = usage p
 
--- data Context
---   = CVal Name Value
---   | CSel Name Int Name
---   | CCont Name Name Term
---   | CFn Name Value
---   | CPrim Name L.Primitive [Name]
---   deriving Show
+simplify :: Term -> Term
+simplify t = find $ iterate simplify' t
+    where find (a:b:xs) | a == b = b
+                        | otherwise = find (b:xs)
+          find _ = error "unreachable"
 
--- optimize :: Term -> State Bindings Term
--- optimize t =
---   case t of
---     (LetVal n v t1) -> do
---       t2 <- optimize t1
---       update n t2
---       pure (LetVal n v t2)
---     -- beta selection
---     (LetSel y i x c) ->
---       let t1 = case find x of
---             Just (LetVal _ (Tuple elems) _) -> inline [(y, elems !! i)] c
---             _ -> t
---        in update y t1 $> t1
---     -- beta cont
---     (Continue k y) ->
---       case find k of
---         Just (LetCont j x c _) -> optimize $ inline [(x, y)] c
---         _ -> pure t
---     _ -> error ""
---   where
---     find n = get >>= Map.lookup n
---     update n t = modify (Map.insert n t)

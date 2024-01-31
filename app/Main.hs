@@ -26,7 +26,7 @@ eff = parse . tokenize $
         "let rec consoleHandler = fun e -> \
         \   handle e with \
         \   | Print(x,k) -> k () \
-        \   | Input(x,k) -> k 5 \
+        \   | Input(x,k) -> let plus1 = fun x -> x + 1 in k (plus1(plus1(5))) \
         \in \
         \let rec loop = fun n -> if n > 0 then (Print n; loop (n-1)) else () in \
         \consoleHandler (loop 5)"     
