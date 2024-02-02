@@ -22,6 +22,7 @@ import Util (def, usage, var)
 import Prelude hiding (lookup)
 import Data.Bifunctor (Bifunctor(second))
 import GHC.Base (assert)
+import CompileEnv hiding (Name)
 
 -- replace :: Name -> Name -> Term -> Term
 -- replace s t = transformOn var f
@@ -72,7 +73,7 @@ extendSubsts :: Subst -> [(Name, Name)] -> Subst
 extendSubsts st [] = st
 extendSubsts st ((s, t) : xs) = extendSubsts (extendSubst st s t) xs
 
-simpVal :: Census -> Env -> Subst -> Value -> State Int Value
+simpVal :: Census -> Env -> Subst -> Value -> CompEnv Value
 simpVal census env s v = case v of
   Var n -> pure $ Var (applySubst s n)
   Tuple ns -> pure $ Tuple (map (applySubst s) ns)
@@ -80,18 +81,17 @@ simpVal census env s v = case v of
   Fn k _ x l -> Fn k Nothing x <$> simp census env s l
   _ -> pure v
 
-inst :: Term -> State Int Term
+inst :: Term -> CompEnv Term
 inst p =
   do
+    let defs = def p
+    ndefs <- mapM freshWithBase defs 
     u <- get
-    let defs = Map.fromList $ zipWith (\a b -> (a, a ++ "_" ++ show b)) (def p) [u ..]
-    let f x = fromMaybe x (Map.lookup x defs)
-    put (u + length defs)
+    let f x = fromMaybe x (Map.lookup x (Map.fromList $ zip defs ndefs))
     let r = transformOn var f p
-    -- () <- traceM ("\n========= from ======\n" ++ show p ++ "\n====\n" ++ show r ++ "\n== END ==\n")
     pure r
 
-simp :: Census -> Env -> Subst -> Term -> State Int Term
+simp :: Census -> Env -> Subst -> Term -> CompEnv Term
 simp census env s p =
   -- traceWith (\r -> if r == p then "" else
   --                  "\n========================= from ==========================\n"
@@ -159,7 +159,7 @@ simp census env s p =
     x -> pure x
 
 simplify' :: Term -> Term
-simplify' p = evalState (simp census Map.empty Map.empty p) 100
+simplify' p = evalState (simp census Map.empty Map.empty p) mkCompStates
   where
     census = usage p
 
