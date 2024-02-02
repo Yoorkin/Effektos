@@ -7,16 +7,13 @@ import CPS
 import qualified Constant as Const
 import Control.Monad.State.Lazy
 import qualified Lambda as L
+import CompileEnv hiding (Name)
 
-type Env = Int
 
-uniqueName :: String -> State Env String
-uniqueName n = do
-  i <- get
-  modify (+ 1)
-  pure $ n ++ show i
+uniqueName :: String -> CompEnv String
+uniqueName = freshWithBase
 
-trans :: L.Expr -> (Name -> State Env Term) -> State Env Term
+trans :: L.Expr -> (Name -> CompEnv Term) -> CompEnv Term
 trans (L.Var n) kont = kont n
 trans (L.Abs x e) kont =
   do
@@ -106,4 +103,4 @@ trans (L.Switch cond cases fallback) kont = do
 -- Because the handler function is a normal function, not a continuation
 
 translate :: L.Expr -> Term
-translate e = evalState (trans e (pure . Halt)) 0
+translate e = evalState (trans e (pure . Halt)) mkCompStates
