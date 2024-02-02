@@ -84,7 +84,7 @@ var f = goExpr
       (LetPrim n p ns t) -> LetPrim <$> f n <*> pure p <*> traverse f ns <*> goExpr t
       (Switch n index bs fb) -> Switch <$> f n <*> pure index <*> traverse goExpr bs <*> traverse goExpr fb
       (Halt v) -> Halt <$> f v
-      (Handle h fn t) -> Handle <$> f h <*> f fn <*> goExpr t
+      (Handle h fn t) -> Handle h <$> f fn <*> goExpr t
       (Raise h k env x) -> Raise <$> f h <*> f k <*> traverse f env <*> traverse f x
     goValue x = case x of
       (Var n) -> Var <$> f n

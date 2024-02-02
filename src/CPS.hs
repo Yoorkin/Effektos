@@ -135,7 +135,7 @@ instance Pretty Term where
   pretty (Halt e) = group (pretty "halt" </> pretty e)
   pretty (Handle h hf l) = group (pretty "Lethandle" <+> pretty h <+> pretty "=" <+> pretty hf <+> pretty "in" </> pretty l)
   pretty (Raise h k env xs) = group (pretty "raise" <+> pretty h <+> pretty k <+> braces (pretty env) <+> pretty xs)
-  pretty (LetFns fns l) = group (pretty "let rec" <+> nest 2 (concatWith (</>) (map g fns)) <+> pretty "in" </> pretty l)
+  pretty (LetFns fns l) = group (pretty "Letrec" <+> nest 2 (concatWith (</>) (map g fns)) </> pretty "in" </> pretty l)
     where
       g (n, v) = group (pretty n <+> pretty "=" <+> pretty v)
   pretty (Switch n ix bs fb) =

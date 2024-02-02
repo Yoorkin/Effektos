@@ -2,6 +2,7 @@ module CompileEnv
   ( Stamp,
     Name,
     CompStates,
+    CompEnvT,
     CompEnv,
     stamp,
     fresh,
