@@ -9,6 +9,7 @@ import Control.Monad.State.Lazy
 import Data.List ((\\))
 import qualified Data.Map.Lazy as Map
 import Util (free, var)
+import CompileEnv hiding (Name)
 
 type Stamp = Int
 
@@ -28,8 +29,8 @@ wrapProj env closure = f (zip [1 ..] closure)
     f ((i, v) : xs) acc = f xs (LetSel v i env acc)
     f [] acc = acc
 
-transClosure :: Stamp -> Term -> Term
-transClosure stamp t = evalState (transformM f t) stamp
+transClosure :: Term -> CompEnv Term
+transClosure t = transformM f t
   where
     f (LetVal n (Fn k _ xs l) m) = do
       let fvars = free l \\ (k : xs)
@@ -80,5 +81,5 @@ transClosure stamp t = evalState (transformM f t) stamp
             pure $ LetFns (transFnBody fvars nfvars [] fns) l
     f x = pure x
 
-    fresh :: Name -> State Int Name
-    fresh x = state (\i -> (x ++ "_" ++ show i, i + 1))
+    fresh :: Name -> CompEnv Name
+    fresh x = freshWithBase x

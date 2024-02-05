@@ -12,6 +12,7 @@ import qualified Data.Map as Map
 import Data.Maybe
 import Lambda
 import Util (def, var)
+import Control.Monad.Morph
 
 visit :: (Monad m, Plated a) => (a -> m a) -> (a -> m a) -> a -> m a
 visit f g x = g =<< mapMOf plate (visit f g) =<< f x
@@ -82,5 +83,10 @@ exit (Fix ns fs e) = do
   pure $ Fix (map g ns) (map (first g) fs) e
 exit x = pure x
 
-uniquifyTerm :: Expr -> Expr
-uniquifyTerm e = evalState (evalStateT (visit enter exit e) mkCompStates) Map.empty
+
+eval :: CompEnvT (State Env) Expr -> CompEnv Expr
+eval = hoist (Identity . flip evalState Map.empty) 
+
+uniquifyTerm :: Expr -> CompEnv Expr
+uniquifyTerm e = eval (visit enter exit e)
+

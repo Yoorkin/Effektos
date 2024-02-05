@@ -6,23 +6,23 @@
 module BetaReduction where
 
 import CPS
+import CompileEnv hiding (Name)
 import Control.Lens (transformMOn, transformOn)
 import Control.Lens.Plated (rewriteM, universe)
 import Control.Monad.State.Lazy
+import Data.Bifunctor (Bifunctor (second))
 import Data.Functor (($>))
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Text.Lazy (unpack)
 import Debug.Trace
-import Primitive
+import GHC.Base (assert)
 import qualified Lambda as L
+import Primitive
 import Text.Pretty.Simple (pPrint, pShow)
 import Uniquify
 import Util (def, usage, var)
 import Prelude hiding (lookup)
-import Data.Bifunctor (Bifunctor(second))
-import GHC.Base (assert)
-import CompileEnv hiding (Name)
 
 -- replace :: Name -> Name -> Term -> Term
 -- replace s t = transformOn var f
@@ -85,7 +85,7 @@ inst :: Term -> CompEnv Term
 inst p =
   do
     let defs = def p
-    ndefs <- mapM freshWithBase defs 
+    ndefs <- mapM freshWithBase defs
     u <- get
     let f x = fromMaybe x (Map.lookup x (Map.fromList $ zip defs ndefs))
     let r = transformOn var f p
@@ -120,7 +120,7 @@ simp census env s p =
         -- 1 -> simp census (addEnv env k (Cont x l')) s m
         _ -> LetCont k Nothing x l' <$> simp census (addEnv env k (Cont Nothing x l')) s m
     LetFns fns m -> do
-      fns' <- mapM (\(x,b) -> (x,) <$> simpVal census env s b) fns
+      fns' <- mapM (\(x, b) -> (x,) <$> simpVal census env s b) fns
       m' <- simp census env s m
       pure $ LetFns fns' m'
     Continue k _ x ->
@@ -147,25 +147,22 @@ simp census env s p =
                     (Add2, Just [I32 a, I32 b]) ->
                       let v = I32 $ a + b in LetVal n v <$> simp census (addEnv env n v) s t
                     _ -> LetPrim n op ns' <$> fallback
-    Handle h f e -> 
+    Handle h f e ->
       let h' = applySubst s h
           f' = applySubst s f
           e' = simp census env s e
        in Handle h' f' <$> e'
-
     Halt n ->
       pure $
         Halt (applySubst s n)
     x -> pure x
 
-simplify' :: Term -> Term
-simplify' p = evalState (simp census Map.empty Map.empty p) mkCompStates
+simplify' :: Term -> CompEnv Term
+simplify' p = simp census Map.empty Map.empty p
   where
     census = usage p
 
-simplify :: Term -> Term
-simplify t = find $ iterate simplify' t
-    where find (a:b:xs) | a == b = b
-                        | otherwise = find (b:xs)
-          find _ = error "unreachable"
-
+simplify :: Term -> CompEnv Term
+simplify t = do
+  t' <- simplify' t
+  if t' == t then pure t' else simplify t'

@@ -102,5 +102,5 @@ trans (L.Switch cond cases fallback) kont = do
 -- should be function application instead of `Continue`.
 -- Because the handler function is a normal function, not a continuation
 
-translate :: L.Expr -> Term
-translate e = evalState (trans e (pure . Halt)) mkCompStates
+translate :: L.Expr -> CompEnv Term
+translate e = trans e (pure . Halt)

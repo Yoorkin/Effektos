@@ -62,6 +62,7 @@ library
     , comonad
     , containers >=0.6.7
     , lens
+    , mmorph
     , mtl >=2.3.1
     , multimap
     , pretty-simple
@@ -87,6 +88,7 @@ executable cpsLab-exe
     , containers >=0.6.7
     , cpsLab
     , lens
+    , mmorph
     , mtl >=2.3.1
     , multimap
     , pretty-simple
@@ -113,6 +115,7 @@ test-suite cpsLab-test
     , containers >=0.6.7
     , cpsLab
     , lens
+    , mmorph
     , mtl >=2.3.1
     , multimap
     , pretty-simple
