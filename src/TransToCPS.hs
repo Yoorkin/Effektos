@@ -5,7 +5,6 @@ module TransToCPS (translate) where
 
 import CPS
 import qualified Constant as Const
-import Control.Monad.State.Lazy
 import qualified Lambda as L
 import CompileEnv hiding (Name)
 

@@ -1,4 +1,12 @@
-module Flat where
+module Flat
+  ( Name,
+    Program (..),
+    Fn (..),
+    Binding (..),
+    Value (..),
+    Expr (..),
+  )
+where
 
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
@@ -41,13 +49,14 @@ data Expr
   | Exit Name
   deriving (Show)
 
-(</>) a b = a <> line <> b
-
+(<//>) :: Doc ann -> Doc ann -> Doc ann
 (<//>) a b = a <> hardline <> b
 
+nested :: Doc ann -> Doc ann
 nested = nest 4
 
-sepMapBy sep f xs = concatWith (\a b -> a <> sep <> b) (map f xs)
+sepMapBy :: Doc ann -> (a -> Doc ann) -> [a] -> Doc ann
+sepMapBy sep' f xs = concatWith (\a b -> a <> sep' <> b) (map f xs)
 
 instance Pretty Program where
   pretty (Program m fns) = concatWith (<//>) (map pretty (m : fns))

@@ -1,4 +1,4 @@
-module Syntax where
+module Syntax(Program(..), Type(..), Binder, Fn, Expr(..)) where
 import Primitive
 import Constant
 

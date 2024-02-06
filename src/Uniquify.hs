@@ -2,16 +2,13 @@
 
 module Uniquify (uniquifyTerm) where
 
-import qualified CPS
 import CompileEnv
 import Control.Lens
 import Control.Monad.State.Lazy as State
 import Data.Bifunctor (Bifunctor (first))
-import qualified Data.Bifunctor
 import qualified Data.Map as Map
 import Data.Maybe
 import Lambda
-import Util (def, var)
 import Control.Monad.Morph
 
 visit :: (Monad m, Plated a) => (a -> m a) -> (a -> m a) -> a -> m a

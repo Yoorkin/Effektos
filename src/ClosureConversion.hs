@@ -1,17 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
 
-module ClosureConversion where
+module ClosureConversion (transClosure) where
 
 import CPS
+import CompileEnv hiding (Name)
 import Control.Lens (transformM)
 import Control.Lens.Plated (transformOn)
-import Control.Monad.State.Lazy
 import Data.List ((\\))
-import qualified Data.Map.Lazy as Map
 import Util (free, var)
-import CompileEnv hiding (Name)
-
-type Stamp = Int
 
 rename :: Name -> Name -> Term -> Term
 rename a b = transformOn var f
@@ -30,11 +26,11 @@ wrapProj env closure = f (zip [1 ..] closure)
     f [] acc = acc
 
 transClosure :: Term -> CompEnv Term
-transClosure t = transformM f t
+transClosure = transformM f
   where
     f (LetVal n (Fn k _ xs l) m) = do
       let fvars = free l \\ (k : xs)
-      nfvars <- mapM fresh fvars
+      nfvars <- mapM freshWithBase fvars
       let code = n ++ "_code"
       let env = n ++ "_env"
       let l' = wrapProj env nfvars (renames nfvars fvars l)
@@ -44,25 +40,25 @@ transClosure t = transformM f t
           (Fn k (Just env) xs l')
           (LetVal n (Tuple (code : fvars)) m)
     f (Apply g k _ xs) = do
-      fname <- fresh g
+      fname <- freshWithBase g
       let closure = g
       pure $ LetSel fname 0 closure (Apply fname k (Just closure) xs)
     f (LetCont k _ x l m) = do
       let fvars = free l \\ [k, x]
-      nfvars <- mapM fresh fvars
+      nfvars <- mapM freshWithBase fvars
       let code = k ++ "_code"
       let env = k ++ "_env"
       let l' = wrapProj env nfvars (renames fvars nfvars l)
       pure $ LetCont code (Just env) x l' (LetVal k (Tuple (code : fvars)) m)
     f (Continue k _ x) = do
-      kname <- fresh k
+      kname <- freshWithBase k
       let env = k
       pure $ LetSel kname 0 env (Continue kname (Just env) x)
     f (LetFns fns l) =
       let collectVars fv nfv = \case
             ((_, Fn k Nothing xs m) : fns') -> do
               let fv' = free m \\ (k : xs)
-              nfv' <- mapM fresh fv'
+              nfv' <- mapM freshWithBase fv'
               collectVars fv' nfv' fns'
             [] -> pure (reverse fv, reverse nfv)
             _ -> error ""
@@ -80,6 +76,3 @@ transClosure t = transformM f t
             (fvars, nfvars) <- collectVars [] [] fns
             pure $ LetFns (transFnBody fvars nfvars [] fns) l
     f x = pure x
-
-    fresh :: Name -> CompEnv Name
-    fresh x = freshWithBase x

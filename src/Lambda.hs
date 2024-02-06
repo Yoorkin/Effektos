@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Lambda where
 import Data.Data

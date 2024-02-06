@@ -2,10 +2,8 @@
 
 module Flatvm (run) where
 
-import Data.Map.Internal.Debug (showTree)
 import qualified Data.Map.Lazy as Map
 import Data.Maybe (fromJust)
-import Debug.Trace (traceShowId, traceWith)
 import Flat
 import Primitive
 
@@ -67,11 +65,3 @@ run (Program m fns) = eval env (Apply "main" [])
   where
     env = Map.fromList (map g (m : fns))
     g f@(Fn n _ _ _) = (n, RtCode f)
-
-debugEval env expr result =
-  "============================== eval ======================="
-    ++ showTree env
-    ++ "----------------------"
-    ++ show expr
-    ++ "----------------------"
-    ++ show result

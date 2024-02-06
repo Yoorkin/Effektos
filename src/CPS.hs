@@ -2,11 +2,9 @@
 
 module CPS where
 
-import Control.Lens (Traversal')
 import Control.Lens.Plated
 import Data.Data
 import Data.Data.Lens
-import qualified Lambda as L
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Primitive
@@ -51,10 +49,13 @@ instance Plated Value where
 instance Plated Term where
   plate = uniplate
 
+(</>) :: Doc ann -> Doc ann -> Doc ann
 (</>) a b = a <> line <> b
 
+(<//>) :: Doc ann -> Doc ann -> Doc ann
 (<//>) a b = a <> hardline <> b
 
+nested :: Doc ann -> Doc ann
 nested = nest 2
 
 instance Pretty Value where
@@ -147,4 +148,5 @@ instance Pretty Term where
     where
       f (i, e) = pretty i <+> pretty "->" <+> align (pretty e)
 
-sepMapBy sep f xs = concatWith (\a b -> a <> sep <> b) (map f xs)
+sepMapBy :: Doc ann -> (a -> Doc ann) -> [a] -> Doc ann
+sepMapBy sep' f xs = concatWith (\a b -> a <> sep' <> b) (map f xs)

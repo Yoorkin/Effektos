@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -Wno-partial-fields #-}
 module CompileEnv
   ( Stamp,
     Name,
@@ -13,9 +15,7 @@ module CompileEnv
   )
 where
 
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.State (lift)
-import Control.Monad.State.Lazy (State, StateT, get, put)
+import Control.Monad.State.Lazy (StateT, get, put)
 import Control.Comonad.Identity
 
 type Stamp = Int

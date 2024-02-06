@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module HoistToFlat where
+module HoistToFlat(hoistToFlat) where
 
 import CPS
 import qualified Flat as F

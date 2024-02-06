@@ -4,7 +4,6 @@
 module SyntaxToLambda(transProg) where
 
 import Constant
-import Control.Monad.State.Lazy
 import qualified Lambda as L
 import Syntax as S
 import CompileEnv

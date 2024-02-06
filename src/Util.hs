@@ -1,17 +1,16 @@
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Util where
 
 import CPS
 import Control.Comonad.Store (pos)
-import Control.Lens (Traversal')
-import Control.Lens.Plated (Plated, universe)
+import Control.Lens ( Traversal', Plated(..) )
+import Control.Lens.Plated ( universe, contextsOn )
 import Data.List ((\\),nub)
 import qualified Data.Map.Lazy as Map
 import Data.Maybe (fromMaybe, maybeToList)
 import Control.Lens.Traversal (mapMOf)
-import Control.Lens (Plated(..))
-import Control.Lens.Plated (contextsOn)
 import Control.Lens.Fold (toListOf)
 import Data.Foldable (toList)
 
@@ -49,13 +48,13 @@ used = concatMap f . universe
     f (LetSel _ _ n _) = [n]
     f (LetCont {}) = []
     f (LetFns {}) = []
-    f (Continue n1 env n2) = toList env ++ [n1, n2] 
+    f (Continue n1 env n2) = toList env ++ [n1, n2]
     f (Apply n1 n2 env ns) = toList env ++ n1 : n2 : ns
     f (LetPrim _ _ ns _) = ns
     f (Switch n _ _ _) = [n]
     f (Halt n) = [n]
     f (Handle n1 n2 _) = [n1,n2]
-    f (Raise n1 n2 mn ns) = maybeToList mn ++ n1:n2:ns 
+    f (Raise n1 n2 mn ns) = maybeToList mn ++ n1:n2:ns
 
 
 usage :: Term -> Map.Map Name Int

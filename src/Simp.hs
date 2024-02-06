@@ -1,56 +1,16 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
-module BetaReduction where
+module Simp(simplify) where
 
 import CPS
 import CompileEnv hiding (Name)
-import Control.Lens (transformMOn, transformOn)
-import Control.Lens.Plated (rewriteM, universe)
-import Control.Monad.State.Lazy
-import Data.Bifunctor (Bifunctor (second))
-import Data.Functor (($>))
+import Control.Lens (transformOn)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
-import Data.Text.Lazy (unpack)
-import Debug.Trace
-import GHC.Base (assert)
-import qualified Lambda as L
 import Primitive
-import Text.Pretty.Simple (pPrint, pShow)
-import Uniquify
 import Util (def, usage, var)
 import Prelude hiding (lookup)
-
--- replace :: Name -> Name -> Term -> Term
--- replace s t = transformOn var f
---   where
---     f x
---       | x == s = t
---       | otherwise = x
-
-inline :: [(Name, Name)] -> Term -> Term
-inline ps t = transformOn var f t
-  where
-    defs = def t
-    replace = Map.fromList $ ps ++ zip defs (zipWith (\a b -> a ++ "_" ++ show b) defs [0 ..])
-    f x = fromMaybe x (Map.lookup x replace)
-
-type Bindings = Map.Map Name Term
-
-bindings :: Term -> [(Name, Term)]
-bindings t = case t of
-  (LetVal n _ _) -> [(n, t)]
-  (LetSel n _ _ _) -> [(n, t)]
-  (LetCont n _ _ _ _) -> [(n, t)]
-  (LetFns fns _) -> map ((,t) . fst) fns
-  (LetPrim n _ _ _) -> [(n, t)]
-  _ -> []
-
-collect :: Term -> Bindings
-collect t = Map.fromList (concatMap bindings $ universe t)
 
 type Census = Map.Map Name Int
 
@@ -58,15 +18,19 @@ type Env = Map.Map Name Value
 
 type Subst = Map.Map Name Name
 
+count :: (Num a, Ord k) => Map.Map k a -> k -> a
 count census x = fromMaybe 1 (Map.lookup x census)
 
 addEnv :: Env -> Name -> Value -> Env
 addEnv env x v = Map.insert x v env
 
+lookup :: (Ord k) => Map.Map k a -> k -> Maybe a
 lookup env x = Map.lookup x env
 
+applySubst :: (Ord k) => Map.Map k k -> k -> k
 applySubst s x = fromMaybe x (Map.lookup x s)
 
+extendSubst :: (Ord k) => Map.Map k a -> k -> a -> Map.Map k a
 extendSubst st s t = Map.insert s t st
 
 extendSubsts :: Subst -> [(Name, Name)] -> Subst
@@ -86,21 +50,12 @@ inst p =
   do
     let defs = def p
     ndefs <- mapM freshWithBase defs
-    u <- get
     let f x = fromMaybe x (Map.lookup x (Map.fromList $ zip defs ndefs))
     let r = transformOn var f p
     pure r
 
 simp :: Census -> Env -> Subst -> Term -> CompEnv Term
 simp census env s p =
-  -- traceWith (\r -> if r == p then "" else
-  --                  "\n========================= from ==========================\n"
-  --                   ++ show p
-  --                   ++ "\n-----> env\n"
-  --                   ++ unpack (pShow env)
-  --                   ++ "\n-----> subst\n"
-  --                   ++ unpack (pShow s)
-  --                   ++ "\n-------------------- to -----------------\n" ++ show r ++ "\n=======") $
   case p of
     LetVal x v l ->
       if count census x == 0

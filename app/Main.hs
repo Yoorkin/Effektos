@@ -1,6 +1,8 @@
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 module Main (main) where
 
-import qualified BetaReduction
+import qualified Simp
 import qualified ClosureConversion
 import CompileEnv
 import Control.Monad.State.Lazy
@@ -50,7 +52,7 @@ compile input = evalState f mkCompStates
       l <- SyntaxToLambda.transProg syntax
       lambda <- Uniquify.uniquifyTerm l
       cps <- TransToCPS.translate lambda
-      s <- BetaReduction.simplify cps
+      s <- Simp.simplify cps
       clo <- ClosureConversion.transClosure s
       let flat = HoistToFlat.hoistToFlat clo
       return flat
@@ -58,5 +60,5 @@ compile input = evalState f mkCompStates
 
 main :: IO ()
 main = do
-  pPrint $ eff1
+  pPrint eff1
 
