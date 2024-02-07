@@ -6,11 +6,11 @@ module TransToCPS (translate) where
 import CPS
 import qualified Constant as Const
 import qualified Lambda as L
-import CompileEnv hiding (Name)
+import CompileEnv
 
 
-uniqueName :: String -> CompEnv String
-uniqueName = freshWithBase
+uniqueName :: String -> CompEnv Name
+uniqueName = freshStr
 
 trans :: L.Expr -> (Name -> CompEnv Term) -> CompEnv Term
 trans (L.Var n) kont = kont n
@@ -68,7 +68,7 @@ trans (L.Decon rep e) kont =
       trans (L.Select 1 e) kont
 trans (L.Fix ns fs e') kont =
   let g ((n, (x, e)) : fs) acc = do
-        x <- uniqueName x
+        x <- uniName x
         k <- uniqueName "k"
         e <- trans e (pure . Continue k Nothing)
         g fs ((n, Fn k Nothing [x] e) : acc)

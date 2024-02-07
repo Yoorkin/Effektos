@@ -8,8 +8,8 @@ import Data.Data.Lens
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Primitive
+import CompileEnv
 
-type Name = String
 
 data Value
   = Var Name
@@ -29,7 +29,7 @@ data Term
   | Apply Name Name (Maybe Name) [Name]
   | LetPrim Name Primitive [Name] Term
   | Switch Name [Int] [Term] (Maybe Term)
-  | Handle Name Name Term -- h fn
+  | Handle String Name Term -- h fn
   | Raise Name Name (Maybe Name) [Name] -- h k x
   | Halt Name
   deriving (Eq, Ord, Read, Data)

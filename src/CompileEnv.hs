@@ -1,5 +1,7 @@
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# OPTIONS_GHC -Wno-partial-fields #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+
 module CompileEnv
   ( Stamp,
     Name,
@@ -8,15 +10,17 @@ module CompileEnv
     CompEnv,
     stamp,
     fresh,
-    uniquify,
-    freshStr,
+    uniName,
     mkCompStates,
-    freshWithBase,
+    synName,
+    freshStr,
   )
 where
 
-import Control.Monad.State.Lazy (StateT, get, put)
 import Control.Comonad.Identity
+import Control.Monad.State.Lazy (StateT, get, put)
+import Data.Data
+import Prettyprinter
 
 type Stamp = Int
 
@@ -24,12 +28,15 @@ data Name
   = SynName String
   | UniName String Stamp
   | GenName Stamp
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Read, Data)
 
 instance Show Name where
   show (SynName n) = n
   show (UniName n i) = n ++ "_" ++ show i
   show (GenName i) = "$" ++ show i
+
+instance Pretty Name where
+  pretty = pretty . show
 
 data CompStates
   = Compiling
@@ -37,8 +44,8 @@ data CompStates
       }
   | Failed
 
-mkCompStates :: CompStates 
-mkCompStates = Compiling { compNextStamp = 0 }
+mkCompStates :: CompStates
+mkCompStates = Compiling {compNextStamp = 0}
 
 type CompEnvT m a = StateT CompStates m a
 
@@ -54,18 +61,13 @@ stamp = do
 fresh :: (Monad m) => CompEnvT m Name
 fresh = GenName <$> stamp
 
-freshStr :: (Monad m) => CompEnvT m String
-freshStr = show <$> stamp
+freshStr :: Monad m => String -> StateT CompStates m Name
+freshStr s = UniName s <$> stamp
 
-freshWithBase :: (Monad m) => String -> CompEnvT m String
-freshWithBase s = (s ++) <$> freshStr
+uniName :: (Monad m) => Name -> CompEnvT m Name
+uniName (SynName n) = UniName n <$> stamp
+uniName (UniName n _) = UniName n <$> stamp
+uniName (GenName _) = GenName <$> stamp
 
-
-uniquify :: (Monad m) => Name -> CompEnvT m Name
-uniquify (SynName n) = UniName n <$> stamp
-uniquify x = pure x
-
--- trans :: Int -> CompEnv (State String) ()
--- trans i = do
---         j <- fresh
---         lift $ put (show $ i + j)
+synName :: String -> Name
+synName = SynName

@@ -14,7 +14,7 @@ import Control.Monad.Morph
 visit :: (Monad m, Plated a) => (a -> m a) -> (a -> m a) -> a -> m a
 visit f g x = g =<< mapMOf plate (visit f g) =<< f x
 
-type Env = Map.Map String [String]
+type Env = Map.Map Name [Name]
 
 push :: (Ord k) => k -> v -> Map.Map k [v] -> Map.Map k [v]
 push k v = Map.alter (Just . (:) v . fromMaybe []) k
@@ -29,13 +29,13 @@ enter, exit :: Expr -> CompEnvT (State Env) Expr
 enter (Abs old e) =
   do
     mp <- lift get
-    new <- freshWithBase old
+    new <- uniName old
     lift $ put (push old new mp)
     pure $ Abs old e
 enter (Let old e1 e2) =
   do
     mp <- lift get
-    new <- freshWithBase old
+    new <- uniName old
     lift $ put (push old new mp)
     pure $ Let old e1 e2
 enter (Var old) =
@@ -46,16 +46,16 @@ enter (Handle e hds) = g hds
   where
     g [] = do pure $ Handle e hds
     g ((_, x, k, _) : hds') = do
-      k' <- freshWithBase k
-      x' <- freshWithBase x
+      k' <- uniName k
+      x' <- uniName x
       lift $ modify (push k k' . push x x')
       g hds'
 enter (Fix ns fs e) = g (zip ns fs)
   where
     g [] = do pure $ Fix ns fs e
     g ((n, (x, _)) : fs') = do
-      n' <- freshWithBase n
-      x' <- freshWithBase x
+      n' <- uniName n
+      x' <- uniName x
       lift $ modify (push n n' . push x x')
       g fs'
 enter x = pure x

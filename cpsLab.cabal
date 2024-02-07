@@ -32,7 +32,6 @@ library
       Constant
       CPS
       Flat
-      FlatToJs
       Flatvm
       HoistToFlat
       Lambda
