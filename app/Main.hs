@@ -18,6 +18,7 @@ import Control.Monad.Morph (hoist, generalize)
 import qualified Lambda
 import Control.Comonad.Identity (runIdentity)
 import CompileEnv (hoistIO)
+import TransToJS
 
 z = parse . tokenize $ "let compute = fun x -> 5-1+x in let dat = (1,2,3,4) in compute (compute (get2 dat))"
 
@@ -45,8 +46,8 @@ eff1 =
 
 mutrec =
   "let rec f = fun x -> g (x + 1) \
-  \and g = fun x -> if x > 10 then f (x + 2) else x in \
-  \f 114"
+  \and g = fun x -> if 4 > x then f (x + 1 + 1) else x in \
+  \f 1"
 
 test1 =
   "let f = fun x -> x + 1 in\
@@ -65,7 +66,7 @@ compile input = do
       lift $ print lambda
       cps <- hoistIO (TransToCPS.translate lambda)
       -- lift $ print cps
-      -- cps <- hoistIO (Simp.simplify cps)
+      cps <- hoistIO (Simp.simplify cps)
       lift $ putStrLn "=========== CPS ================"
       lift $ print cps
       clo <- hoistIO (ClosureConversion.translClosure cps)
@@ -74,6 +75,9 @@ compile input = do
       flat <- hoistIO (HoistToFlat.hoistToFlat clo)
       lift $ putStrLn "=========== Flat ================"
       lift $ print flat
+      let js = TransToJS.transl flat
+      lift $ putStrLn "=========== JS ================"
+      lift $ putStrLn js
       pure flat
 
 

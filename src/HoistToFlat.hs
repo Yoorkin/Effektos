@@ -53,8 +53,8 @@ toFlat (LetPrim x op ys l) =
 toFlat (Switch cond index branches fallback) =
   let g (l : ls) fs bs es =
         let (f1, b1, e1) = toFlat l
-         in g ls (f1 ++ fs) (b1 ++ bs) (e1 : es)
-      g [] fs bs es = (reverse fs, reverse bs, reverse es)
+         in g ls (f1 ++ fs) (bs ++ b1) (e1 : es)
+      g [] fs bs es = (reverse fs, bs, reverse es)
    in let (fs, bs, es) = g branches [] [] []
        in case fallback of
             (Just fallback') ->

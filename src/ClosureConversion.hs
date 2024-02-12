@@ -72,7 +72,7 @@ transl (LetFns fns m) = do
     nfvars <- mapM uniName fvars
     m' <- transl m
     fns' <- mapM (translFn fvars nfvars fnames fcodes) (zip fcodes fns)
-    env <- freshStr "env'"
+    env <- freshStr "env_"
     pure $ LetFns fns' (LetVal env (Tuple fvars) (wrapFixed env fnames fcodes m'))
   where
     freeVarsOfFn (_, Fn k Nothing xs l) = free l \\ (k:xs)
@@ -87,9 +87,6 @@ transl (LetFns fns m) = do
     wrapFixed _ [] [] p = p
     wrapFixed env (name:names) (code:codes) p = LetVal name (Tuple [code,env]) (wrapFixed env names codes p)
 
-    wrapEnvs [] _ p = p
-    wrapEnvs (f:fnames) fvars p =
-        LetVal f (Tuple (f : fvars)) (wrapEnvs fnames fvars p)
 -- f k x ~~>
 --    let f = select 0 env
 --     in m[f k x |-> let f' = select 0 f in f' k f x]
@@ -118,7 +115,7 @@ transl (LetCont k Nothing x l m) = do
   pure $
     LetCont code (Just env) x l' (LetVal k (Tuple (code : fvars)) m')
 transl (Continue k Nothing x) = do
-  env <- lift $ findEnv k
+  let env = k
   kname <- freshStr "k"
   pure $ LetSel kname 0 env (Continue kname (Just env) x)
 transl (LetVal n1 v l) = LetVal n1 v <$> transl l
