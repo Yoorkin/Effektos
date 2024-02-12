@@ -13,6 +13,7 @@ import Data.Maybe (fromMaybe, maybeToList)
 import Control.Lens.Traversal (mapMOf)
 import Control.Lens.Fold (toListOf)
 import Data.Foldable (toList)
+import CompileEnv
 
 bound :: Term -> [Name]
 bound e = nub $ concatMap f (universe e)
@@ -53,7 +54,7 @@ used = concatMap f . universe
     f (LetPrim _ _ ns _) = ns
     f (Switch n _ _ _) = [n]
     f (Halt n) = [n]
-    f (Handle n1 n2 _) = [n1,n2]
+    f (Handle n1 n2 _) = [n2]
     f (Raise n1 n2 mn ns) = maybeToList mn ++ n1:n2:ns
 
 

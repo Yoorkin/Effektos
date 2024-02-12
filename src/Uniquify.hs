@@ -1,89 +1,63 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Uniquify (uniquifyTerm) where
 
 import CompileEnv
-import Control.Lens
-import Control.Monad.State.Lazy as State
-import Data.Bifunctor (Bifunctor (first))
 import qualified Data.Map as Map
 import Data.Maybe
 import Lambda
-import Control.Monad.Morph
 
-visit :: (Monad m, Plated a) => (a -> m a) -> (a -> m a) -> a -> m a
-visit f g x = g =<< mapMOf plate (visit f g) =<< f x
 
-type Env = Map.Map Name [Name]
+type Subst = Map.Map Name Name
 
-push :: (Ord k) => k -> v -> Map.Map k [v] -> Map.Map k [v]
-push k v = Map.alter (Just . (:) v . fromMaybe []) k
-
-pop :: (Ord k) => k -> Map.Map k [v] -> Map.Map k [v]
-pop = Map.adjust tail
-
-top :: (Ord k) => k -> Map.Map k [v] -> Maybe v
-top k mp = case fromMaybe [] $ Map.lookup k mp of [] -> Nothing; x : _ -> Just x
-
-enter, exit :: Expr -> CompEnvT (State Env) Expr
-enter (Abs old e) =
-  do
-    mp <- lift get
-    new <- uniName old
-    lift $ put (push old new mp)
-    pure $ Abs old e
-enter (Let old e1 e2) =
-  do
-    mp <- lift get
-    new <- uniName old
-    lift $ put (push old new mp)
-    pure $ Let old e1 e2
-enter (Var old) =
-  do
-    mp <- lift get
-    pure $ Var (fromMaybe old (top old mp))
-enter (Handle e hds) = g hds
-  where
-    g [] = do pure $ Handle e hds
-    g ((_, x, k, _) : hds') = do
-      k' <- uniName k
-      x' <- uniName x
-      lift $ modify (push k k' . push x x')
-      g hds'
-enter (Fix ns fs e) = g (zip ns fs)
-  where
-    g [] = do pure $ Fix ns fs e
-    g ((n, (x, _)) : fs') = do
+uniquify :: Subst -> Expr -> CompEnv Expr
+uniquify st =
+  \case
+    (Var n) -> pure $ Var (applySubst n st)
+    (Abs n e) -> do
       n' <- uniName n
-      x' <- uniName x
-      lift $ modify (push n n' . push x x')
-      g fs'
-enter x = pure x
-exit (Abs old e) = do
-  mp <- lift get
-  let new = fromJust $ top old mp
-  lift $ modify (pop old)
-  pure $ Abs new e
-exit (Let old e1 e2) = do
-  mp <- lift get
-  let new = fromJust $ top old mp
-  lift $ modify (pop old)
-  pure $ Let new e1 e2
-exit (Handle c hds) = do
-  mp <- lift get
-  let g n = fromJust $ top n mp
-  let f (h, x, k, e) = (h, g x, g k, e)
-  pure $ Handle c (map f hds)
-exit (Fix ns fs e) = do
-  mp <- lift get
-  let g n = fromJust $ top n mp
-  pure $ Fix (map g ns) (map (first g) fs) e
-exit x = pure x
-
-
-eval :: CompEnvT (State Env) Expr -> CompEnv Expr
-eval = hoist (Identity . flip evalState Map.empty) 
+      Abs n' <$> go (appendSubst n n' st) e
+    (Let n e m) -> do
+      n' <- uniName n
+      let st' = appendSubst n n' st
+      Let n' <$> go st' e <*> go st' m
+    (App l m) -> App <$> go st l <*> go st m
+    (Fix ns fns e) -> do
+      ns' <- mapM uniName ns
+      let st1 = appendSubsts ns ns' st
+      let aux (x, m) = do
+            x' <- uniName x
+            m' <- go (appendSubst x x' st1) m
+            pure (x', m')
+      Fix ns' <$> mapM aux fns <*> go st1 e
+    (Lambda.Const c) -> pure $ Lambda.Const c
+    (Tuple xs) -> Tuple <$> mapM (go st) xs
+    (Select i e) -> Select i <$> go st e
+    (PrimOp p es) -> PrimOp p <$> mapM (go st) es
+    (Constr r e) -> Constr r <$> go st e
+    (Decon r e) -> Decon r <$> go st e
+    (Switch e cases fallback) ->
+      Switch <$> go st e <*> mapM (\(a, b) -> (a,) <$> go st b) cases <*> mapM (go st) fallback
+    (Handle e effs) ->
+      let aux (eff, n1, n2, l) = do
+            l' <- go st l
+            pure
+              ( eff,
+                applySubst n1 st,
+                applySubst n2 st,
+                l'
+              )
+       in Handle <$> go st e <*> mapM aux effs
+    (Resume l m) -> Resume <$> go st l <*> go st m
+  where
+    appendSubst = Map.insert
+    appendSubsts [] [] st' = st'
+    appendSubsts (old : olds) (new : news) st' = appendSubst old new (appendSubsts olds news st')
+    applySubst old st' = fromJust $ Map.lookup old st'
+    go = uniquify
 
 uniquifyTerm :: Expr -> CompEnv Expr
-uniquifyTerm e = eval (visit enter exit e)
-
+uniquifyTerm = uniquify Map.empty

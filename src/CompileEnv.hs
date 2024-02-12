@@ -14,6 +14,7 @@ module CompileEnv
     mkCompStates,
     synName,
     freshStr,
+    hoistIO
   )
 where
 
@@ -21,6 +22,9 @@ import Control.Comonad.Identity
 import Control.Monad.State.Lazy (StateT, get, put)
 import Data.Data
 import Prettyprinter
+import Control.Lens ( Plated(..) )
+import Data.Data.Lens
+import Control.Monad.Morph (hoist, MFunctor)
 
 type Stamp = Int
 
@@ -32,8 +36,11 @@ data Name
 
 instance Show Name where
   show (SynName n) = n
-  show (UniName n i) = n ++ "_" ++ show i
+  show (UniName n i) = n ++ show i
   show (GenName i) = "$" ++ show i
+
+instance Plated Name where
+  plate = uniplate
 
 instance Pretty Name where
   pretty = pretty . show
@@ -71,3 +78,6 @@ uniName (GenName _) = GenName <$> stamp
 
 synName :: String -> Name
 synName = SynName
+
+hoistIO :: (MFunctor t) => t Identity a -> t IO a
+hoistIO = hoist (pure . runIdentity)

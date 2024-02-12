@@ -4,7 +4,7 @@
 module Simp(simplify) where
 
 import CPS
-import CompileEnv hiding (Name)
+import CompileEnv
 import Control.Lens (transformOn)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
@@ -49,7 +49,7 @@ inst :: Term -> CompEnv Term
 inst p =
   do
     let defs = def p
-    ndefs <- mapM freshWithBase defs
+    ndefs <- mapM uniName defs
     let f x = fromMaybe x (Map.lookup x (Map.fromList $ zip defs ndefs))
     let r = transformOn var f p
     pure r
@@ -103,10 +103,10 @@ simp census env s p =
                       let v = I32 $ a + b in LetVal n v <$> simp census (addEnv env n v) s t
                     _ -> LetPrim n op ns' <$> fallback
     Handle h f e ->
-      let h' = applySubst s h
+      let 
           f' = applySubst s f
           e' = simp census env s e
-       in Handle h' f' <$> e'
+       in Handle h f' <$> e'
     Halt n ->
       pure $
         Halt (applySubst s n)

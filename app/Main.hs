@@ -14,6 +14,10 @@ import qualified SyntaxToLambda
 import Text.Pretty.Simple (pPrint)
 import TransToCPS
 import Uniquify (uniquifyTerm)
+import Control.Monad.Morph (hoist, generalize)
+import qualified Lambda
+import Control.Comonad.Identity (runIdentity)
+import CompileEnv (hoistIO)
 
 z = parse . tokenize $ "let compute = fun x -> 5-1+x in let dat = (1,2,3,4) in compute (compute (get2 dat))"
 
@@ -40,22 +44,37 @@ eff1 =
   \consoleHandler (loop 5)"
 
 mutrec =
-  "let rec f = fun x -> g (x - 1) \
-  \and g = fun x -> if x > 10 then f (x - 2) else x in \
+  "let rec f = fun x -> g (x + 1) \
+  \and g = fun x -> if x > 10 then f (x + 2) else x in \
   \f 114"
 
-compile :: String -> Flat.Program
-compile input = evalState f mkCompStates
-  where
-    f = do
+test1 =
+  "let f = fun x -> x + 1 in\
+    \ f 114"
+
+compile :: String -> CompEnvT IO Flat.Program
+compile input = do
       let syntax = parse . tokenize $ input
-      l <- SyntaxToLambda.transProg syntax
-      lambda <- Uniquify.uniquifyTerm l
-      cps <- TransToCPS.translate lambda
-      s <- Simp.simplify cps
-      clo <- ClosureConversion.transClosure s
-      let flat = HoistToFlat.hoistToFlat clo
-      return flat
+      lambda <- hoistIO (SyntaxToLambda.transProg syntax)
+      lift $ putStrLn "=========== Lambda ================"
+      lift $ print lambda
+      cps <- hoistIO (TransToCPS.translate lambda)
+      lambda <- hoistIO (Uniquify.uniquifyTerm lambda)
+      -- lift $ print lambda
+      lift $ putStrLn "=========== Uniquified ================"
+      lift $ print lambda
+      cps <- hoistIO (TransToCPS.translate lambda)
+      -- lift $ print cps
+      -- cps <- hoistIO (Simp.simplify cps)
+      lift $ putStrLn "=========== CPS ================"
+      lift $ print cps
+      clo <- hoistIO (ClosureConversion.translClosure cps)
+      lift $ putStrLn "=========== Closure Passing Style ================"
+      lift $ print clo
+      flat <- hoistIO (HoistToFlat.hoistToFlat clo)
+      lift $ putStrLn "=========== Flat ================"
+      lift $ print flat
+      pure flat
 
 
 main :: IO ()

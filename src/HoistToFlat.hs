@@ -4,6 +4,7 @@ module HoistToFlat(hoistToFlat) where
 
 import CPS
 import qualified Flat as F
+import CompileEnv
 
 valueToFlat :: Value -> F.Value
 valueToFlat = \case
@@ -68,8 +69,8 @@ toFlat (Raise h k (Just env) args) =
   ([], [], F.Raise h (k : env : args))
 toFlat _ = error ""
 
-hoistToFlat :: Term -> F.Program
-hoistToFlat t = F.Program fm fs
+hoistToFlat :: Term -> CompEnv F.Program
+hoistToFlat t = F.Program <$> fm <*> pure fs
   where
     (fs, bs, e) = toFlat t
-    fm = F.Fn "main" [] bs e
+    fm = F.Fn <$> freshStr "main" <*> pure [] <*> pure bs <*> pure e

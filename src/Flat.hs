@@ -11,8 +11,7 @@ where
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Primitive
-
-type Name = String
+import CompileEnv
 
 data Program
   = Program Fn [Fn]
@@ -44,7 +43,7 @@ instance Pretty Value where
 data Expr
   = Apply Name [Name]
   | Switch Name [Int] [Expr] (Maybe Expr)
-  | Handle Name Name Expr
+  | Handle String Name Expr
   | Raise Name [Name]
   | Exit Name
   deriving (Show)

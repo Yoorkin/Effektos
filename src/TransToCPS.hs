@@ -68,7 +68,6 @@ trans (L.Decon rep e) kont =
       trans (L.Select 1 e) kont
 trans (L.Fix ns fs e') kont =
   let g ((n, (x, e)) : fs) acc = do
-        x <- uniName x
         k <- uniqueName "k"
         e <- trans e (pure . Continue k Nothing)
         g fs ((n, Fn k Nothing [x] e) : acc)

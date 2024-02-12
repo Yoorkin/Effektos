@@ -1,13 +1,23 @@
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
-module ClosureConversion (transClosure) where
+module ClosureConversion (translClosure) where
 
 import CPS
-import CompileEnv hiding (Name)
-import Control.Lens (transformM)
+import CompileEnv
+import Control.Lens (Plated, plate, transformM)
+import Control.Lens.Combinators (mapMOf)
 import Control.Lens.Plated (transformOn)
+import Control.Monad.Morph
+import Control.Monad.State
+import Control.Monad.State.Lazy (State)
 import Data.List ((\\))
+import qualified Data.Map.Lazy as Map
+import Data.Maybe (fromMaybe)
+import qualified Data.Maybe
+import Debug.Trace (traceShow, traceShowM, traceShowWith)
 import Util (free, var)
+import GHC.OldList (nub)
 
 rename :: Name -> Name -> Term -> Term
 rename a b = transformOn var f
@@ -19,60 +29,108 @@ renames (a : as) (b : bs) t = renames as bs (rename a b t)
 renames [] [] t = t
 renames _ _ _ = error ""
 
-wrapProj :: Name -> [Name] -> Term -> Term
-wrapProj env closure = f (zip [1 ..] closure)
+wrapProj :: Int -> Name -> [Name] -> Term -> Term
+wrapProj base env closure = f (zip [base..] closure)
   where
     f ((i, v) : xs) acc = f xs (LetSel v i env acc)
     f [] acc = acc
 
-transClosure :: Term -> CompEnv Term
-transClosure = transformM f
-  where
-    f (LetVal n (Fn k _ xs l) m) = do
-      let fvars = free l \\ (k : xs)
-      nfvars <- mapM freshWithBase fvars
-      let code = n ++ "_code"
-      let env = n ++ "_env"
-      let l' = wrapProj env nfvars (renames nfvars fvars l)
-      pure $
-        LetVal
-          code
-          (Fn k (Just env) xs l')
-          (LetVal n (Tuple (code : fvars)) m)
-    f (Apply g k _ xs) = do
-      fname <- freshWithBase g
-      let closure = g
-      pure $ LetSel fname 0 closure (Apply fname k (Just closure) xs)
-    f (LetCont k _ x l m) = do
-      let fvars = free l \\ [k, x]
-      nfvars <- mapM freshWithBase fvars
-      let code = k ++ "_code"
-      let env = k ++ "_env"
-      let l' = wrapProj env nfvars (renames fvars nfvars l)
-      pure $ LetCont code (Just env) x l' (LetVal k (Tuple (code : fvars)) m)
-    f (Continue k _ x) = do
-      kname <- freshWithBase k
-      let env = k
-      pure $ LetSel kname 0 env (Continue kname (Just env) x)
-    f (LetFns fns l) =
-      let collectVars fv nfv = \case
-            ((_, Fn k Nothing xs m) : fns') -> do
-              let fv' = free m \\ (k : xs)
-              nfv' <- mapM freshWithBase fv'
-              collectVars fv' nfv' fns'
-            [] -> pure (reverse fv, reverse nfv)
-            _ -> error ""
+type FnClosure = Map.Map Name Name
 
-          transFnBody fv nfv acc = \case
-            ((n, Fn k Nothing xs m) : fns') ->
-              let code = k ++ "_code"
-                  env = k ++ "_env"
-                  -- FIX: exclude Handlers name from closure
-                  m' = wrapProj env nfv (renames fv nfv m)
-               in transFnBody fv nfv ((n, Fn code (Just env) xs m') : acc) fns'
-            [] -> reverse acc
-            _ -> error ""
-       in do
-            (fvars, nfvars) <- collectVars [] [] fns
-            pure $ LetFns (transFnBody fvars nfvars [] fns) l
-    f x = pure x
+findEnv :: Name -> State FnClosure Name
+findEnv n = gets (fromMaybe n . Map.lookup n)
+
+addEnv :: Name -> Name -> State FnClosure ()
+addEnv f env = modify (Map.insert f env)
+
+transl :: Term -> CompEnvT (State FnClosure) Term
+-- function
+--
+-- let f = fun k x -> l in m ~~>
+--   let code = fun k env x ->
+--                 let nfv1 = select 0 env in
+--                 let nfvn = select n env in l
+--    in let f = (code, nfv ...) in m
+transl (LetVal n (Fn k Nothing xs l) m) = do
+  let fvars = free l \\ (k : xs)
+  nfvars <- mapM uniName fvars
+  code <- freshStr "code"
+  env <- freshStr "env"
+  l' <- wrapProj 1 env nfvars <$> (renames nfvars fvars <$> transl l)
+  m' <- transl m
+  pure $
+    LetVal
+      code
+      (Fn k (Just env) xs l')
+      (LetVal n (Tuple (code : fvars)) m')
+-- For functions declared in letrec they can share same closure.
+-- The env name of those function can be find in FnClosure.
+transl (LetFns fns m) = do
+    let fnames = map fst fns
+    fcodes <- mapM uniName fnames
+    let fvars = nub $ concatMap freeVarsOfFn fns \\ fnames
+    nfvars <- mapM uniName fvars
+    m' <- transl m
+    fns' <- mapM (translFn fvars nfvars fnames fcodes) (zip fcodes fns)
+    env <- freshStr "env'"
+    pure $ LetFns fns' (LetVal env (Tuple fvars) (wrapFixed env fnames fcodes m'))
+  where
+    freeVarsOfFn (_, Fn k Nothing xs l) = free l \\ (k:xs)
+
+    translFn fvs nfvs fnames fcodes (fcode, (_, Fn k Nothing xs l)) = do
+      env <- freshStr "env"
+      l' <- renames fvs nfvs <$> transl l
+      pure (fcode, Fn k (Just env) xs
+             (wrapFixed env fnames fcodes
+              (wrapProj 0 env nfvs l')))
+
+    wrapFixed _ [] [] p = p
+    wrapFixed env (name:names) (code:codes) p = LetVal name (Tuple [code,env]) (wrapFixed env names codes p)
+
+    wrapEnvs [] _ p = p
+    wrapEnvs (f:fnames) fvars p =
+        LetVal f (Tuple (f : fvars)) (wrapEnvs fnames fvars p)
+-- f k x ~~>
+--    let f = select 0 env
+--     in m[f k x |-> let f' = select 0 f in f' k f x]
+--
+transl (Apply g k Nothing xs) = do
+  env <- lift $ findEnv g
+  code <- fresh
+  pure $ LetSel code 0 env (Apply code k (Just env) xs)
+
+-- continuation
+--
+-- let k x = l in m ~~>
+--     let code env x =
+--          let fvar1 = select 0 env in
+--          let fvarN = select N env in l
+--     in
+--     let k = (code, fvar ...)
+--     in m[k x |-> let k' = select 0 k in k' k x]
+transl (LetCont k Nothing x l m) = do
+  let fvars = free l \\ [k, x]
+  nfvars <- mapM uniName fvars
+  code <- freshStr "code"
+  env <- freshStr "env"
+  l' <- wrapProj 1 env nfvars <$> (renames fvars nfvars <$> transl l)
+  m' <- transl m
+  pure $
+    LetCont code (Just env) x l' (LetVal k (Tuple (code : fvars)) m')
+transl (Continue k Nothing x) = do
+  env <- lift $ findEnv k
+  kname <- freshStr "k"
+  pure $ LetSel kname 0 env (Continue kname (Just env) x)
+transl (LetVal n1 v l) = LetVal n1 v <$> transl l
+transl (LetSel n1 i n2 l) = LetSel n1 i n2 <$> transl l
+transl (LetPrim n1 p ns l) = LetPrim n1 p ns <$> transl l
+transl (Switch n ix ms m) = Switch n ix <$> mapM transl ms <*> mapM transl m
+transl (Handle s n l) = Handle s n <$> transl l
+transl term@(Raise {}) = pure term
+transl term@(Halt {}) = pure term
+transl term = pure term
+
+-- transl x = error $ "unexpected " ++ show x
+
+translClosure :: Term -> CompEnv Term
+translClosure t = hoist (`evalStateT` Map.empty) (transl t)
