@@ -25,6 +25,8 @@ import Prettyprinter
 import Control.Lens ( Plated(..) )
 import Data.Data.Lens
 import Control.Monad.Morph (hoist, MFunctor)
+import Data.Map.Lazy (Map)
+import qualified Data.Map.Lazy as Map
 
 type Stamp = Int
 
@@ -36,7 +38,7 @@ data Name
 
 instance Show Name where
   show (SynName n) = n
-  show (UniName n i) = n ++ show i
+  show (UniName n i) = if i == 0 then n else n ++ show i
   show (GenName i) = "$" ++ show i
 
 instance Plated Name where
@@ -47,12 +49,13 @@ instance Pretty Name where
 
 data CompStates
   = Compiling
-      { compNextStamp :: Stamp
+      { compNamedStamp :: Map String Stamp
+      , compNextStamp :: Stamp
       }
   | Failed
 
 mkCompStates :: CompStates
-mkCompStates = Compiling {compNextStamp = 0}
+mkCompStates = Compiling {compNextStamp = 0, compNamedStamp = Map.empty}
 
 type CompEnvT m a = StateT CompStates m a
 
@@ -69,7 +72,15 @@ fresh :: (Monad m) => CompEnvT m Name
 fresh = GenName <$> stamp
 
 freshStr :: Monad m => String -> StateT CompStates m Name
-freshStr s = UniName s <$> stamp
+freshStr str = do 
+        s <- get
+        let mp = compNamedStamp s
+        let (r,mp') = 
+               case Map.lookup str mp of
+                   Nothing -> (0, Map.insert str 1 mp)
+                   Just x -> (x, Map.insert str (x + 1) mp)
+        put (s { compNamedStamp = mp' })
+        pure $ UniName str r
 
 uniName :: (Monad m) => Name -> CompEnvT m Name
 uniName (SynName n) = UniName n <$> stamp
