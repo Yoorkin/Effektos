@@ -1,13 +1,13 @@
+{-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module TransToCPS (translate) where
 
 import CPS
+import CompileEnv
 import qualified Constant as Const
 import qualified Lambda as L
-import CompileEnv
-
 
 uniqueName :: String -> CompEnv Name
 uniqueName = freshStr
@@ -81,19 +81,22 @@ trans (L.Handle e hs) kont =
         LetVal hf (Fn k Nothing [x, hk] hbody) <$> (Handle h hf <$> g hs')
       g [] = trans e kont
    in g hs
-trans (L.Switch cond cases fallback) kont = do
-  k <- uniqueName "k"
-  x <- uniqueName "x"
-  let (index, branches) = unzip cases
-  let g branch = trans branch (pure . Continue k Nothing)
-  let branches' = mapM g branches
-  let fallback' = mapM g fallback
+trans (L.Switch cond cases _) kont = do
+  let (ix, branches) = unzip cases
   trans
     cond
     ( \cond' ->
-        LetCont k Nothing x
-          <$> kont x
-          <*> (Switch cond' index <$> branches' <*> fallback')
+        let f acc =
+              \case
+                (b : bs) -> do
+                  branchK <- uniqueName "branch"
+                  branchX <- uniqueName "x"
+                  c <- freshStr "c"
+                  LetCont branchK Nothing branchX
+                    <$> trans b kont
+                    <*> f (LetVal c Unit (Continue branchK Nothing c) : acc) bs
+                [] -> pure $ Switch cond' ix (reverse acc)
+         in f [] branches
     )
 
 -- trans (L.Resume c a) kont = trans c (\c' -> trans a (pure . Continue c' Nothing))

@@ -28,7 +28,7 @@ data Term
   | Continue Name (Maybe Name) Name
   | Apply Name Name (Maybe Name) [Name]
   | LetPrim Name Primitive [Name] Term
-  | Switch Name [Int] [Term] (Maybe Term)
+  | Switch Name [Int] [Term]
   | Handle String Name Term -- h fn
   | Raise Name Name (Maybe Name) [Name] -- h k x
   | Halt Name
@@ -139,12 +139,11 @@ instance Pretty Term where
   pretty (LetFns fns l) = group (pretty "Letrec" <> nest 2 (line <> concatWith (</>) (map g fns)) </> pretty "in" </> pretty l)
     where
       g (n, v) = group (pretty n <+> pretty "=" <+> pretty v)
-  pretty (Switch n ix bs fb) =
+  pretty (Switch n ix ks) =
     pretty "switch"
       <+> pretty n
       <> colon
-      <> nested (hardline <> sepMapBy hardline f (zip ix bs))
-      <> case fb of (Just fb') -> pretty "_ ->" <+> align (pretty fb'); Nothing -> emptyDoc
+      <> nested (hardline <> sepMapBy hardline f (zip ix ks))
     where
       f (i, e) = pretty i <+> pretty "->" <+> align (pretty e)
 

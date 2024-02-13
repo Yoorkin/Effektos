@@ -50,17 +50,13 @@ toFlat (LetPrim x op ys l) =
   let (fs, bs, e) = toFlat l
       b = F.Binding x (F.PrimOp op ys)
    in (fs, b : bs, e)
-toFlat (Switch cond index branches fallback) =
+toFlat (Switch cond index branches) =
   let g (l : ls) fs bs es =
         let (f1, b1, e1) = toFlat l
          in g ls (f1 ++ fs) (bs ++ b1) (e1 : es)
       g [] fs bs es = (reverse fs, bs, reverse es)
    in let (fs, bs, es) = g branches [] [] []
-       in case fallback of
-            (Just fallback') ->
-              let (f, b, e) = toFlat fallback' in (f ++ fs, b ++ bs, F.Switch cond index es (Just e))
-            Nothing ->
-              (fs, bs, F.Switch cond index es Nothing)
+      in (fs, bs, F.Switch cond index es Nothing)
 toFlat (Halt n) = ([], [], F.Exit n)
 toFlat (Handle h f l) =
   let (fs, bs, e) = toFlat l
