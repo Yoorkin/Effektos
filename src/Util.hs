@@ -18,6 +18,7 @@ import CompileEnv
 bound :: Term -> [Name]
 bound e = nub $ concatMap f (universe e)
   where
+    f (LetVal n (Fn k _ xs _) _) = n:k:xs
     f (LetVal n _ _) = [n]
     f (LetSel n _ _ _) = [n]
     f (LetCont n1 env n2 _ _) = toList env ++ [n1,n2]

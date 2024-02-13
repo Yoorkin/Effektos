@@ -19,6 +19,7 @@ import qualified Lambda
 import Control.Comonad.Identity (runIdentity)
 import CompileEnv (hoistIO)
 import TransToJS
+import Util (free, bound, var, occur)
 
 z = parse . tokenize $ "let compute = fun x -> 5-1+x in let dat = (1,2,3,4) in compute (compute (get2 dat))"
 
@@ -45,38 +46,36 @@ eff1 =
   \consoleHandler (loop 5)"
 
 mutrec =
-  "let rec f = fun x -> g (x + 1) \
-  \and g = fun x -> if 4 > x then f (x + 1 + 1) else x in \
+  "let y = 2 in let rec f = fun x -> g (x + y) \
+  \and g = fun x -> if 4 > x then f (x + y) else x in \
   \f 1"
 
 test1 =
-  "let f = fun x -> x + 1 in\
-    \ f 114"
+  "let n = 5 + 2 in let f = fun x -> x + n in f (f 114)"
 
 compile :: String -> CompEnvT IO Flat.Program
 compile input = do
       let syntax = parse . tokenize $ input
-      lambda <- hoistIO (SyntaxToLambda.transProg syntax)
       lift $ putStrLn "=========== Lambda ================"
+      lambda <- hoistIO (SyntaxToLambda.transProg syntax)
       lift $ print lambda
-      cps <- hoistIO (TransToCPS.translate lambda)
-      lambda <- hoistIO (Uniquify.uniquifyTerm lambda)
       -- lift $ print lambda
       lift $ putStrLn "=========== Uniquified ================"
+      lambda <- hoistIO (Uniquify.uniquifyTerm lambda)
       lift $ print lambda
-      cps <- hoistIO (TransToCPS.translate lambda)
       -- lift $ print cps
-      cps <- hoistIO (Simp.simplify cps)
+      -- cps <- hoistIO (Simp.simplify cps)
       lift $ putStrLn "=========== CPS ================"
+      cps <- hoistIO (TransToCPS.translate lambda)
       lift $ print cps
-      clo <- hoistIO (ClosureConversion.translClosure cps)
       lift $ putStrLn "=========== Closure Passing Style ================"
+      clo <- hoistIO (ClosureConversion.translClosure cps)
       lift $ print clo
-      flat <- hoistIO (HoistToFlat.hoistToFlat clo)
       lift $ putStrLn "=========== Flat ================"
+      flat <- hoistIO (HoistToFlat.hoistToFlat clo)
       lift $ print flat
-      let js = TransToJS.transl flat
       lift $ putStrLn "=========== JS ================"
+      let js = TransToJS.transl flat
       lift $ putStrLn js
       pure flat
 

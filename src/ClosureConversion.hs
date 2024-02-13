@@ -38,6 +38,7 @@ findEnv n = gets (fromMaybe n . Map.lookup n)
 addEnv :: Name -> Name -> State FnClosure ()
 addEnv f env = modify (Map.insert f env)
 
+
 transl :: Term -> CompEnvT (State FnClosure) Term
 -- function
 --
@@ -51,7 +52,7 @@ transl (LetVal n (Fn k Nothing xs l) m) = do
   nfvars <- mapM uniName fvars
   code <- freshStr "code"
   env <- freshStr "env"
-  l' <- wrapProj 1 env nfvars <$> (renames nfvars fvars <$> transl l)
+  l' <- wrapProj 1 env nfvars <$> (renames fvars nfvars <$> transl l)
   m' <- transl m
   pure $
     LetVal
@@ -74,10 +75,12 @@ transl (LetFns fns m) = do
 
     translFn fvs nfvs fnames fcodes (fcode, (_, Fn k Nothing xs l)) = do
       env <- freshStr "env"
+      env' <- freshStr "env"
       l' <- renames fvs nfvs <$> transl l
       pure (fcode, Fn k (Just env) xs
-             (wrapFixed env fnames fcodes
-              (wrapProj 0 env nfvs l')))
+             (LetSel env' 1 env  
+             (wrapFixed env' fnames fcodes
+              (wrapProj 0 env' nfvs l'))))
 
     wrapFixed _ [] [] p = p
     wrapFixed env (name:names) (code:codes) p = LetVal name (Tuple [code,env]) (wrapFixed env names codes p)
