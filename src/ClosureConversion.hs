@@ -5,17 +5,12 @@ module ClosureConversion (translClosure) where
 
 import CPS
 import CompileEnv
-import Control.Lens (Plated, plate, transformM)
-import Control.Lens.Combinators (mapMOf)
 import Control.Lens.Plated (transformOn)
 import Control.Monad.Morph
 import Control.Monad.State
-import Control.Monad.State.Lazy (State)
 import Data.List ((\\))
 import qualified Data.Map.Lazy as Map
 import Data.Maybe (fromMaybe)
-import qualified Data.Maybe
-import Debug.Trace (traceShow, traceShowM, traceShowWith)
 import Util (free, var)
 import GHC.OldList (nub)
 
