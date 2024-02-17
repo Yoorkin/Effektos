@@ -63,6 +63,11 @@ closureMap =
   \let table = append 1 2 empty in \
   \table 4"
 
+iterator =
+  "let rec iter = fun x -> if x < 9 then iter (raise Yield x) else 0 in \
+  \handle iter 1 with \
+  \| Yield (x,k) -> print x; k (x + 2)"
+
 compile :: String -> CompEnvT IO Flat.Program
 compile input = do
       let syntax = parse . tokenize $ input

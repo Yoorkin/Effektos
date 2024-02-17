@@ -65,15 +65,26 @@ type CompEnvT m a = StateT CompStates m a
 
 type CompEnv a = StateT CompStates Identity a
 
-stamp :: (Monad m) => CompEnvT m Stamp
-stamp = do
-  s <- get
-  let r = compNextStamp s
-  put (s {compNextStamp = r + 1})
-  pure r
+stamp :: (Monad m) => Maybe String -> CompEnvT m Stamp
+stamp mbase = 
+  case mbase of
+    Nothing -> do
+        s <- get
+        let r = compNextStamp s
+        put (s {compNextStamp = r + 1})
+        pure r
+    Just base -> do
+        s <- get
+        let mp = compNamedStamp s
+        let (r,mp') = 
+               case Map.lookup base mp of
+                   Nothing -> (0, Map.insert base 1 mp)
+                   Just x -> (x, Map.insert base (x + 1) mp)
+        put (s { compNamedStamp = mp' })
+        pure r
 
 fresh :: (Monad m) => CompEnvT m Name
-fresh = GenName <$> stamp
+fresh = GenName <$> stamp Nothing
 
 freshStr :: Monad m => String -> StateT CompStates m Name
 freshStr str = do 
@@ -87,9 +98,9 @@ freshStr str = do
         pure $ UniName str r
 
 uniName :: (Monad m) => Name -> CompEnvT m Name
-uniName (SynName n) = UniName n <$> stamp
-uniName (UniName n _) = UniName n <$> stamp
-uniName (GenName _) = GenName <$> stamp
+uniName (SynName n) = UniName n <$> stamp (Just n)
+uniName (UniName n _) = UniName n <$> stamp (Just n)
+uniName (GenName _) = GenName <$> stamp Nothing
 
 synName :: String -> Name
 synName = SynName

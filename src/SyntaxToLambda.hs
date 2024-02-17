@@ -42,4 +42,5 @@ transExpr expr = case expr of
   (Handle e hds) ->
     let f (eff, x, k, m) = (eff,synName x,synName k,) <$> transExpr m
      in L.Handle <$> transExpr e <*> mapM f hds
-  (Resume k a) -> L.Resume <$> transExpr k <*> transExpr a
+  (Raise eff x) -> L.Raise eff <$> transExpr x
+  -- (Resume k a) -> L.Resume <$> transExpr k <*> transExpr a

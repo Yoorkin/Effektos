@@ -45,7 +45,8 @@ translExpr =
                    Nothing -> mempty
                    Just d -> pretty "default:" <> nested (hardline <> translExpr d)
                )) <> hardline)
-    (Handle {}) -> error ""
+    (PushHdl {}) -> error ""
+    (PopHdl {}) -> error ""
     (Raise {}) -> error ""
     (Exit n) -> pretty "console.log" <> parens (pretty n)
 

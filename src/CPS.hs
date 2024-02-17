@@ -20,6 +20,8 @@ data Value
   | Fn Name (Maybe Name) [Name] Term -- k env x e
   deriving (Eq, Ord, Read, Data)
 
+type Effect = String
+
 data Term
   = LetVal Name Value Term
   | LetSel Name Int Name Term -- TODO: Value to String, the Value should be (Var x)
@@ -29,8 +31,9 @@ data Term
   | Apply Name Name (Maybe Name) [Name]
   | LetPrim Name Primitive [Name] Term
   | Switch Name [Int] [Term]
-  | Handle String Name Term -- h fn
-  | Raise Name Name (Maybe Name) [Name] -- h k x
+  | PushHdl Effect Name Term
+  | PopHdl Effect Term
+  | Raise Effect Name (Maybe Name) [Name] -- h k x
   | Halt Name
   deriving (Eq, Ord, Read, Data)
 
@@ -134,7 +137,8 @@ instance Pretty Term where
       )
       </> pretty t
   pretty (Halt e) = group (pretty "halt" </> pretty e)
-  pretty (Handle h hf l) = group (pretty "Lethandle" <+> pretty h <+> pretty "=" <+> pretty hf <+> pretty "in" </> pretty l)
+  pretty (PushHdl eff hdl l) = group (pretty "PushHdl" <+> pretty eff <+> pretty hdl <+> pretty ";" </> pretty l)
+  pretty (PopHdl eff l) = group (pretty "PopHdl" <+> pretty eff <+> pretty ";" </> pretty l)
   pretty (Raise h k env xs) = group (pretty "raise" <+> pretty h <+> pretty k <+> braces (pretty env) <+> pretty xs)
   pretty (LetFns fns l) = group (pretty "Letrec" <> nest 2 (line <> concatWith (</>) (map g fns)) </> pretty "in" </> pretty l)
     where

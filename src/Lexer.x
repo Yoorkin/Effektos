@@ -54,6 +54,7 @@ keywords =
   , "handle"
   , "with"
   , "resume"
+  , "raise"
   ]  
 
 

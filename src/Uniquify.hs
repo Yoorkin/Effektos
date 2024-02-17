@@ -10,7 +10,6 @@ import qualified Data.Map as Map
 import Data.Maybe
 import Lambda
 
-
 type Subst = Map.Map Name Name
 
 uniquify :: Subst -> Expr -> CompEnv Expr
@@ -43,20 +42,24 @@ uniquify st =
       Switch <$> go st e <*> mapM (\(a, b) -> (a,) <$> go st b) cases <*> mapM (go st) fallback
     (Handle e effs) ->
       let aux (eff, n1, n2, l) = do
-            l' <- go st l
+            n1' <- uniName n1
+            n2' <- uniName n2
+            l' <- go (appendSubst n1 n1' (appendSubst n2 n2' st)) l
             pure
               ( eff,
-                applySubst n1 st,
-                applySubst n2 st,
+                n1',
+                n2',
                 l'
               )
        in Handle <$> go st e <*> mapM aux effs
     (Resume l m) -> Resume <$> go st l <*> go st m
+    (Raise eff x) -> Raise eff <$> go st x
   where
     appendSubst = Map.insert
     appendSubsts [] [] st' = st'
     appendSubsts (old : olds) (new : news) st' = appendSubst old new (appendSubsts olds news st')
-    applySubst old st' = fromJust $ Map.lookup old st'
+    applySubst old st' =
+      fromMaybe old (Map.lookup old st')
     go = uniquify
 
 uniquifyTerm :: Expr -> CompEnv Expr

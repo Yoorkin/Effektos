@@ -55,8 +55,9 @@ used = concatMap f . universe
     f (LetPrim _ _ ns _) = ns
     f (Switch n _ _) = [n]
     f (Halt n) = [n]
-    f (Handle _ n2 _) = [n2]
-    f (Raise n1 n2 mn ns) = maybeToList mn ++ n1:n2:ns
+    f (PushHdl _ n2 _) = [n2]
+    f (PopHdl {}) = []
+    f (Raise _ n mn ns) = maybeToList mn ++ n:ns
 
 
 usage :: Term -> Map.Map Name Int
@@ -85,8 +86,9 @@ var f = goExpr
       (LetPrim n p ns t) -> LetPrim <$> f n <*> pure p <*> traverse f ns <*> goExpr t
       (Switch n ix ts) -> Switch <$> f n <*> pure ix <*> traverse goExpr ts
       (Halt v) -> Halt <$> f v
-      (Handle h fn t) -> Handle h <$> f fn <*> goExpr t
-      (Raise h k env x) -> Raise <$> f h <*> f k <*> traverse f env <*> traverse f x
+      (PushHdl eff fn t) -> PushHdl eff <$> f fn <*> goExpr t
+      (PopHdl eff t) -> PopHdl eff <$> goExpr t
+      (Raise eff k env x) -> Raise eff <$> f k <*> traverse f env <*> traverse f x
     goValue x = case x of
       (Var n) -> Var <$> f n
       (I32 _) -> pure x

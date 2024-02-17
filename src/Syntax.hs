@@ -32,6 +32,7 @@ data Expr
   | Hole
   | Handle Expr [(String,Binder,Binder,Expr)]
   | Resume Expr Expr
+  | Raise String Expr
   deriving (Show)
 
 

@@ -37,6 +37,7 @@ data Expr
   | Decon Repr Expr
   | Switch Expr [(Int, Expr)] (Maybe Expr)
   | Handle Expr [(Effect, Name, Name, Expr)]
+  | Raise Effect Expr
   | Resume Expr Expr
   deriving (Eq, Ord, Show, Read, Data)
 

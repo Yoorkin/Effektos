@@ -40,11 +40,14 @@ instance Pretty Value where
   pretty (Tuple ns) = parens (sepMapBy (comma <> space) pretty ns)
   pretty v@(PrimOp {}) = pretty $ show v
 
+type Effect = String
+
 data Expr
   = Apply Name [Name]
   | Switch Name [Int] [Expr] (Maybe Expr)
-  | Handle String Name Expr
-  | Raise Name [Name]
+  | PushHdl Effect Name Expr
+  | PopHdl Effect Expr
+  | Raise Effect [Name]
   | Exit Name
   deriving (Show)
 
@@ -82,6 +85,11 @@ instance Pretty Expr where
     where
       f (i, e) = pretty (i :: Int) <+> pretty "->" <+> pretty e
   pretty (Exit n) = pretty "exit" <+> pretty n
+  pretty (PushHdl eff f e) = pretty "pushHdl" <+> pretty eff <+> pretty f <+> pretty ";" <//> pretty e
+  pretty (PopHdl eff e) = pretty "popHdl" <+> pretty eff <+> pretty ";" <//> pretty e
+  pretty (Raise eff xs) = pretty "raise" <+> pretty eff <+> parens (sepMapBy comma pretty xs)
+
+
 
 renderDoc :: Doc ann -> String
 renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})

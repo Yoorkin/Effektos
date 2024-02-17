@@ -29,6 +29,7 @@ import Constant as Const
     'handle' { (Token _ _ _ (Symbol "handle")) }
     'with' { (Token _ _ _ (Symbol "with")) }
     'resume' { (Token _ _ _ (Symbol "resume")) }
+    'raise' { (Token _ _ _ (Symbol "raise")) }
     '->' { (Token _ _ _ (Symbol "->"))}
     ARROW { (Token _ _ _ (Symbol "->"))}
     '>=' { (Token _ _ _ (Symbol ">="))}
@@ -116,6 +117,7 @@ Expr : 'fun' IDENT '->' Expr                     { Fun $2 $4 }
      | 'handle' Expr 'with' option('|') sepBy1(Handler,'|')  
 	                                             { Handle $2 $5 }
 	 | 'resume' Expr Expr                        { Resume $2 $3 }
+	 | 'raise' IDENT Expr                        { Raise $2 $3 }
      | Term                                      { $1 }
 
 MatchingCase : Constant '->' Expr { ($1, $3) }

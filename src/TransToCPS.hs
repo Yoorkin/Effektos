@@ -73,14 +73,6 @@ trans (L.Fix ns fs e') kont =
         g fs ((n, Fn k Nothing [x] e) : acc)
       g [] acc = LetFns (reverse acc) <$> trans e' kont
    in g (zip ns fs) []
-trans (L.Handle e hs) kont =
-  let g ((h, x, hk, e) : hs') = do
-        hf <- uniqueName "h"
-        k <- uniqueName "k"
-        hbody <- trans e (pure . Continue k Nothing)
-        LetVal hf (Fn k Nothing [x, hk] hbody) <$> (Handle h hf <$> g hs')
-      g [] = trans e kont
-   in g hs
 trans (L.Switch cond cases _) kont = do
   let (ix, branches) = unzip cases
   trans
@@ -99,9 +91,29 @@ trans (L.Switch cond cases _) kont = do
          in f [] branches
     )
 
--- trans (L.Resume c a) kont = trans c (\c' -> trans a (pure . Continue c' Nothing))
--- should be function application instead of `Continue`.
--- Because the handler function is a normal function, not a continuation
+-- The handler function is a normal function, not a continuation
+trans (L.Handle e hds) kont =
+  let aux :: [(L.Effect, Name, Name, L.Expr)] -> (Name -> CompEnv Term) -> CompEnv Term
+      aux [] kont' = trans e kont'
+      aux ((effect, hx, hk, l) : hds') kont' = do
+        handler <- freshStr "handler"
+        k <- freshStr "k"
+        l' <- trans l (pure . Continue k Nothing)
+        m' <- aux hds' (fmap (PopHdl effect) . kont')
+        pure $
+          LetVal
+            handler
+            (Fn k Nothing [hx, hk] l')
+            ( PushHdl
+                effect
+                handler
+                m'
+            )
+   in aux hds kont
+trans (L.Raise eff arg) kont = do
+  k <- freshStr "k"
+  x <- freshStr "x"
+  trans arg (\arg' -> LetCont k Nothing x <$> kont x <*> pure (Raise eff k Nothing [arg']))
 
 translate :: L.Expr -> CompEnv Term
 translate e = trans e (pure . Halt)
