@@ -53,6 +53,16 @@ mutrec =
 test1 =
   "let n = 5 + 2 in let f = fun x -> x + n in f (f 114)"
 
+test2 =
+  "let f = fun x -> x + 5 in f (f 114)"
+
+closureMap = 
+  "let empty = fun key -> () in \
+  \let append = fun k -> fun v -> fun m -> \
+  \             (fun x -> if x == k then v else m x) in \
+  \let table = append 1 2 empty in \
+  \table 4"
+
 compile :: String -> CompEnvT IO Flat.Program
 compile input = do
       let syntax = parse . tokenize $ input
@@ -64,9 +74,11 @@ compile input = do
       lambda <- hoistIO (Uniquify.uniquifyTerm lambda)
       lift $ print lambda
       -- lift $ print cps
-      -- cps <- hoistIO (Simp.simplify cps)
       lift $ putStrLn "=========== CPS ================"
       cps <- hoistIO (TransToCPS.translate lambda)
+      lift $ print cps
+      lift $ putStrLn "=========== Simplified CPS ================"
+      cps <- hoistIO (Simp.simplify cps)
       lift $ print cps
       lift $ putStrLn "=========== Closure Passing Style ================"
       clo <- hoistIO (ClosureConversion.translClosure cps)

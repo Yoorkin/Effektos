@@ -26,13 +26,14 @@ import Constant as Const
     'then' { (Token _ _ _ (Symbol "then"))}
     'else' { (Token _ _ _ (Symbol "else"))}
     'fun' { (Token _ _ _ (Symbol "fun"))}
-	'handle' { (Token _ _ _ (Symbol "handle")) }
-	'with' { (Token _ _ _ (Symbol "with")) }
-	'resume' { (Token _ _ _ (Symbol "resume")) }
+    'handle' { (Token _ _ _ (Symbol "handle")) }
+    'with' { (Token _ _ _ (Symbol "with")) }
+    'resume' { (Token _ _ _ (Symbol "resume")) }
     '->' { (Token _ _ _ (Symbol "->"))}
     ARROW { (Token _ _ _ (Symbol "->"))}
     '>=' { (Token _ _ _ (Symbol ">="))}
     '<=' { (Token _ _ _ (Symbol "<="))}
+	'==' { (Token _ _ _ (Symbol "=="))}
     '=' { (Token _ _ _ (Symbol "="))}
     '!=' { (Token _ _ _ (Symbol "!="))}
     ',' { (Token _ _ _ (Symbol ","))} 
@@ -101,7 +102,7 @@ Op : '+' { $1 }
    | '>=' { $1 }   
    | '<=' { $1 }             
    | '!=' { $1 }
-   | '=' {$1}
+   | '==' {$1}
 
 Binding : IDENT '=' Expr                         { ($1, $3) }
 

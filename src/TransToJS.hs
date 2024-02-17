@@ -26,6 +26,7 @@ translVal =
       case (op, ns) of
         (P.Add2, [a, b]) -> op2 a b "+"
         (P.GT, [a, b]) -> op2 a b ">"
+        (P.EQ, [a, b]) -> op2 a b "==="
         x -> pretty $ show op
 
 translBinding :: Binding -> Doc ann

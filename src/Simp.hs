@@ -11,6 +11,10 @@ import Data.Maybe (fromMaybe)
 import Primitive
 import Util (def, usage, var)
 import Prelude hiding (lookup)
+import Debug.Trace (traceShowWith, traceWith)
+import Control.Monad.State (runStateT)
+import Control.Monad.State.Lazy (evalStateT)
+import Control.Monad.State.Lazy (evalState)
 
 type Census = Map.Map Name Int
 
@@ -54,21 +58,29 @@ inst p =
     let r = transformOn var f p
     pure r
 
+
+traceSimp :: Term -> CompEnv Term -> CompEnv Term
+traceSimp p = traceWith (\x -> let r = evalState x (mkCompBeginWith 1000) in
+                                        "---------- simp --------\n" ++
+                                        "===> before\n" ++ show p ++
+                                        "\n===> after\n" ++ show r ++ "\n"
+  )
+
 simp :: Census -> Env -> Subst -> Term -> CompEnv Term
 simp census env s p =
   case p of
-    LetVal x v l ->
+    LetVal x v l -> 
       if count census x == 0
         then simp census env s l
         else do
           v' <- simpVal census env s v
           LetVal x v' <$> simp census (addEnv env x v') s l
-    LetSel x i y l ->
+    LetSel x i y l ->  
       let y' = applySubst s y
        in case lookup env y' of
             Just (Tuple elems) -> simp census env (extendSubst s x (elems !! i)) l
             _ -> LetSel x i y' <$> simp census env s l
-    LetCont k _ x l m -> do
+    LetCont k _ x l m -> do 
       l' <- simp census env s l
       case count census k of
         0 -> simp census env s m
@@ -78,13 +90,13 @@ simp census env s p =
       fns' <- mapM (\(x, b) -> (x,) <$> simpVal census env s b) fns
       m' <- simp census env s m
       pure $ LetFns fns' m'
-    Continue k _ x ->
+    Continue k _ x -> traceSimp p $ 
       let x' = applySubst s x
        in let k' = applySubst s k
            in case lookup env k' of
                 Just (Cont _ y l) -> inst l >>= simp census env (extendSubst s y x')
                 _ -> pure $ Continue k' Nothing x'
-    Apply f k _ xs ->
+    Apply f k _ xs -> traceSimp p $
       let f' = applySubst s f
           k' = applySubst s k
           xs' = map (applySubst s) xs
@@ -103,7 +115,7 @@ simp census env s p =
                       let v = I32 $ a + b in LetVal n v <$> simp census (addEnv env n v) s t
                     _ -> LetPrim n op ns' <$> fallback
     Handle h f e ->
-      let 
+      let
           f' = applySubst s f
           e' = simp census env s e
        in Handle h f' <$> e'

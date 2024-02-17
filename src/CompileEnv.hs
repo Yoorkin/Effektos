@@ -12,6 +12,7 @@ module CompileEnv
     fresh,
     uniName,
     mkCompStates,
+    mkCompBeginWith,
     synName,
     freshStr,
     hoistIO
@@ -56,6 +57,9 @@ data CompStates
 
 mkCompStates :: CompStates
 mkCompStates = Compiling {compNextStamp = 0, compNamedStamp = Map.empty}
+
+mkCompBeginWith :: Int -> CompStates
+mkCompBeginWith x = Compiling {compNextStamp = x, compNamedStamp = Map.empty}
 
 type CompEnvT m a = StateT CompStates m a
 

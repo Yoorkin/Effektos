@@ -26,7 +26,7 @@ selectPrimOp (Token _ _ _ (Symbol x)) =
         "<" -> Op.LT
         ">=" -> GE
         "<=" -> LE
-        "=" -> Op.EQ
+        "==" -> Op.EQ
         "<>" -> NE
         _ -> error $ show x
 selectPrimOp _ = error ""
