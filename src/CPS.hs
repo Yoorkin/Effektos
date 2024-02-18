@@ -21,6 +21,10 @@ data Value
   deriving (Eq, Ord, Read, Data)
 
 type Effect = String
+type Cont = Name
+type Function = Name
+type Argument = Name
+type Closure = Name
 
 data Term
   = LetVal Name Value Term
@@ -28,12 +32,11 @@ data Term
   | LetCont Name (Maybe Name) Name Term Term
   | LetFns [(Name, Value)] Term
   | Continue Name (Maybe Name) Name
-  | Apply Name Name (Maybe Name) [Name]
+  | Apply Function Cont (Maybe Closure) [Argument]
   | LetPrim Name Primitive [Name] Term
   | Switch Name [Int] [Term]
-  | PushHdl Effect Name Term
-  | PopHdl Effect Term
-  | Raise Effect Name (Maybe Name) [Name] -- h k x
+  | Handle Term [(Effect, Function)]
+  | Raise Effect Cont [Argument] -- h k x
   | Halt Name
   deriving (Eq, Ord, Read, Data)
 
@@ -137,9 +140,8 @@ instance Pretty Term where
       )
       </> pretty t
   pretty (Halt e) = group (pretty "halt" </> pretty e)
-  pretty (PushHdl eff hdl l) = group (pretty "PushHdl" <+> pretty eff <+> pretty hdl <+> pretty ";" </> pretty l)
-  pretty (PopHdl eff l) = group (pretty "PopHdl" <+> pretty eff <+> pretty ";" </> pretty l)
-  pretty (Raise h k env xs) = group (pretty "raise" <+> pretty h <+> pretty k <+> braces (pretty env) <+> pretty xs)
+  pretty (Handle e hdls) = group (pretty "handle" <> nested (line <> pretty e) </> pretty "with" <> nested (line <> pretty hdls))
+  pretty (Raise h k xs) = group (pretty "Raise" <+> pretty h <+> pretty k <+> pretty xs)
   pretty (LetFns fns l) = group (pretty "Letrec" <> nest 2 (line <> concatWith (</>) (map g fns)) </> pretty "in" </> pretty l)
     where
       g (n, v) = group (pretty n <+> pretty "=" <+> pretty v)

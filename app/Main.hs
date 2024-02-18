@@ -64,16 +64,34 @@ closureMap =
   \table 4"
 
 iterator =
-  "let rec iter = fun x -> if x < 9 then iter (raise Yield x) else 0 in \
+  "let print = fun x -> (extern \"console.log\" x) in \
+  \let rec iter = fun x -> let n = raise (Yield,x) in print n; iter n in \
   \handle iter 1 with \
-  \| Yield (x,k) -> print x; k (x + 2)"
+  \| Yield (x,k) -> if x > 5 then 114514 else resume (k,x + 2) "
+
+
+iterator2 =
+  "let print = fun x -> (extern \"console.log\" x) in \
+  \let rec iterator = \
+  \    fun l -> iterator (raise (Yield, l)) in \
+  \handle iterator 1 with \
+  \| Yield (x,k) -> print x; if x > 10 then 114514 else resume (k,x + 2) "
+
+printTest = 
+  "let print = fun x -> (extern \"console.log\" x) in \
+  \print 114514"
 
 compile :: String -> CompEnvT IO Flat.Program
 compile input = do
-      let syntax = parse . tokenize $ input
+      lift $ putStrLn "=========== Source ================"
+      lift $ putStrLn input
+      lift $ putStrLn "=========== Tokens ================"
+      let tokens = tokenize input 
+      lift $ pPrint tokens
       lift $ putStrLn "=========== Lambda ================"
+      let syntax = parse tokens
       lambda <- hoistIO (SyntaxToLambda.transProg syntax)
-      lift $ print lambda
+      lift $ pPrint lambda
       -- lift $ print lambda
       lift $ putStrLn "=========== Uniquified ================"
       lambda <- hoistIO (Uniquify.uniquifyTerm lambda)
@@ -83,7 +101,7 @@ compile input = do
       cps <- hoistIO (TransToCPS.translate lambda)
       lift $ print cps
       lift $ putStrLn "=========== Simplified CPS ================"
-      cps <- hoistIO (Simp.simplify cps)
+      -- cps <- hoistIO (Simp.simplify cps)
       lift $ print cps
       lift $ putStrLn "=========== Closure Passing Style ================"
       clo <- hoistIO (ClosureConversion.translClosure cps)

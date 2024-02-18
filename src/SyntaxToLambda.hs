@@ -1,5 +1,4 @@
 {-# LANGUAGE TupleSections #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module SyntaxToLambda (transProg) where
 
@@ -43,4 +42,4 @@ transExpr expr = case expr of
     let f (eff, x, k, m) = (eff,synName x,synName k,) <$> transExpr m
      in L.Handle <$> transExpr e <*> mapM f hds
   (Raise eff x) -> L.Raise eff <$> transExpr x
-  -- (Resume k a) -> L.Resume <$> transExpr k <*> transExpr a
+  (Resume k a) -> L.Resume <$> transExpr k <*> transExpr a

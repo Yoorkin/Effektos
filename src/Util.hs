@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
+{-# LANGUAGE TupleSections #-}
 
 module Util where
 
@@ -22,7 +23,9 @@ bound e = nub $ concatMap f (universe e)
     f (LetVal n _ _) = [n]
     f (LetSel n _ _ _) = [n]
     f (LetCont n1 env n2 _ _) = toList env ++ [n1,n2]
-    f (LetFns fns _) = map fst fns
+    f (LetFns fns _) = concatMap g fns
+                  where g (n,Fn k _ args _) = n:k:args
+                        g _ = error ""
     f (LetPrim n _ _ _) = [n]
     f _ = []
 
@@ -55,9 +58,8 @@ used = concatMap f . universe
     f (LetPrim _ _ ns _) = ns
     f (Switch n _ _) = [n]
     f (Halt n) = [n]
-    f (PushHdl _ n2 _) = [n2]
-    f (PopHdl {}) = []
-    f (Raise _ n mn ns) = maybeToList mn ++ n:ns
+    f (Handle _ hdls) = map snd hdls
+    f (Raise _ n ns) = n:ns
 
 
 usage :: Term -> Map.Map Name Int
@@ -86,9 +88,8 @@ var f = goExpr
       (LetPrim n p ns t) -> LetPrim <$> f n <*> pure p <*> traverse f ns <*> goExpr t
       (Switch n ix ts) -> Switch <$> f n <*> pure ix <*> traverse goExpr ts
       (Halt v) -> Halt <$> f v
-      (PushHdl eff fn t) -> PushHdl eff <$> f fn <*> goExpr t
-      (PopHdl eff t) -> PopHdl eff <$> goExpr t
-      (Raise eff k env x) -> Raise eff <$> f k <*> traverse f env <*> traverse f x
+      (Handle e hdls) -> Handle <$> goExpr e <*> traverse (\(x,y) -> (x,) <$> f y) hdls
+      (Raise eff k x) -> Raise eff <$> f k <*> traverse f x
     goValue x = case x of
       (Var n) -> Var <$> f n
       (I32 _) -> pure x

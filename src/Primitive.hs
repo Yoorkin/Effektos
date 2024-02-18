@@ -20,6 +20,7 @@ data Primitive
   | Not
   | And
   | Xor
+  | Extern String
   deriving (Eq,Ord,Show,Read,Data)
 
 instance Plated Primitive where

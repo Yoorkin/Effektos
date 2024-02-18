@@ -5,6 +5,7 @@ import Syntax as Syntax
 import Lexer
 import ParseUtils
 import Constant as Const
+import qualified Primitive
 }
 
 %name parse Start
@@ -14,6 +15,7 @@ import Constant as Const
 %token
     INT { (Token _ _ _ (Number $$))}
     BOOL { (Token _ _ _ (Lexer.Boolean $$))}
+    STRING { (Token _ _ _ (Lexer.String $$))}
     IDENT { (Token _ _ _ (Identifier $$))}
     EOF { (Token _ _ _ Eof) }
     'let' { (Token _ _ _ (Symbol "let"))}
@@ -30,6 +32,7 @@ import Constant as Const
     'with' { (Token _ _ _ (Symbol "with")) }
     'resume' { (Token _ _ _ (Symbol "resume")) }
     'raise' { (Token _ _ _ (Symbol "raise")) }
+    'extern' { (Token _ _ _ (Symbol "extern")) }
     '->' { (Token _ _ _ (Symbol "->"))}
     ARROW { (Token _ _ _ (Symbol "->"))}
     '>=' { (Token _ _ _ (Symbol ">="))}
@@ -116,8 +119,9 @@ Expr : 'fun' IDENT '->' Expr                     { Fun $2 $4 }
      | Expr ';' Expr                             { Sequence $1 $3 } 
      | 'handle' Expr 'with' option('|') sepBy1(Handler,'|')  
 	                                             { Handle $2 $5 }
-	 | 'resume' Expr Expr                        { Resume $2 $3 }
-	 | 'raise' IDENT Expr                        { Raise $2 $3 }
+	 | 'resume' '(' Expr ',' Expr ')'            { Resume $3 $5 }
+	 | 'raise' '(' IDENT ',' Expr ')'            { Raise $3 $5 }
+	 | 'extern' STRING Expr                      { Prim (Primitive.Extern $2) [$3] }
      | Term                                      { $1 }
 
 MatchingCase : Constant '->' Expr { ($1, $3) }
@@ -137,7 +141,9 @@ Atom : IDENT                                     { Var $1 }
      | Atom ':' Type                             { Anno $1 $3 }
      | Constant                                  { Syntax.Const $1 }
 
+
 Constant : INT          { Const.Integer $1 }
          | BOOL         { Const.Boolean $1 }
+		 | STRING       { Const.String $1 }
 
 

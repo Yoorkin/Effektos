@@ -6,12 +6,26 @@ import Flat
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import qualified Primitive as P
+import qualified Constant
 
 renderDoc :: Doc ann -> String
 renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
 
 transl :: Flat.Program -> String
-transl (Program f fs) = renderDoc $ sepMapBy hardline translFn (f : fs)
+transl (Program f fs) = renderDoc $ pretty runtime <> hardline <> sepMapBy hardline translFn (f : fs)
+    where runtime = "\
+    \const $hds = new Map(); \n\
+    \function $push(eff,h){ if($hds.has(eff)){ $hds.get(eff).push(h) }else{ $hds.set(eff,[h]) } } \n\
+    \function $pop(eff){ $hds.get(eff).pop() } \n\
+    \function $raise(eff,k,x){ \
+    \ const h = $hds.get(eff).slice(-1)[0]; \
+    \ h[0](h,k,x) }"
+
+translExtern :: String -> [Name] -> Doc ann
+translExtern f xs =
+  let f' = case f of
+              x -> x
+  in pretty f' <> parens (sepMapBy comma (pretty . show) xs)
 
 translVal :: Value -> Doc ann
 translVal =
@@ -24,9 +38,11 @@ translVal =
     (PrimOp op ns) ->
       let op2 a b op = pretty a <+> pretty op <+> pretty b in
       case (op, ns) of
+        (P.Extern f, args) -> translExtern f args
         (P.Add2, [a, b]) -> op2 a b "+"
         (P.GT, [a, b]) -> op2 a b ">"
         (P.EQ, [a, b]) -> op2 a b "==="
+        (P.LT, [a, b]) -> op2 a b "<"
         x -> pretty $ show op
 
 translBinding :: Binding -> Doc ann
@@ -45,9 +61,12 @@ translExpr =
                    Nothing -> mempty
                    Just d -> pretty "default:" <> nested (hardline <> translExpr d)
                )) <> hardline)
-    (PushHdl {}) -> error ""
-    (PopHdl {}) -> error ""
-    (Raise {}) -> error ""
+    (Handle e hdls) -> 
+        let aux [] = translExpr e
+            aux ((eff,h):hdls') = pretty "$push" <> parens (dquotes (pretty eff) <> comma <> pretty h) <//> aux hdls' <//> 
+                                    pretty "$pop" <> parens (dquotes (pretty eff))
+         in aux hdls
+    (Raise eff args) -> pretty "$raise" <> parens (dquotes (pretty eff) <> comma <> sepMapBy comma pretty args)
     (Exit n) -> pretty "console.log" <> parens (pretty n)
 
 translFn :: Fn -> Doc ann

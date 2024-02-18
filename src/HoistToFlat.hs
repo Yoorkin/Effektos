@@ -58,15 +58,12 @@ toFlat (Switch cond index branches) =
    in let (fs, bs, es) = g branches [] [] []
       in (fs, bs, F.Switch cond index es Nothing)
 toFlat (Halt n) = ([], [], F.Exit n)
-toFlat (PushHdl h f l) =
+toFlat (Handle l hdls) =
   let (fs, bs, e) = toFlat l
-   in (fs, bs, F.PushHdl h f e)
-toFlat (PopHdl h l) =
-  let (fs, bs, e) = toFlat l
-   in (fs, bs, F.PopHdl h e)
-toFlat (Raise h k (Just env) args) =
-  ([], [], F.Raise h (k : env : args))
-toFlat _ = error ""
+   in (fs, bs, F.Handle e hdls)
+toFlat (Raise h k args) =
+  ([], [], F.Raise h (k : args))
+toFlat x = error (show x)
 
 hoistToFlat :: Term -> CompEnv F.Program
 hoistToFlat t = F.Program <$> fm <*> pure fs

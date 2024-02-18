@@ -45,8 +45,7 @@ type Effect = String
 data Expr
   = Apply Name [Name]
   | Switch Name [Int] [Expr] (Maybe Expr)
-  | PushHdl Effect Name Expr
-  | PopHdl Effect Expr
+  | Handle Expr [(Effect, Name)]
   | Raise Effect [Name]
   | Exit Name
   deriving (Show)
@@ -85,8 +84,7 @@ instance Pretty Expr where
     where
       f (i, e) = pretty (i :: Int) <+> pretty "->" <+> pretty e
   pretty (Exit n) = pretty "exit" <+> pretty n
-  pretty (PushHdl eff f e) = pretty "pushHdl" <+> pretty eff <+> pretty f <+> pretty ";" <//> pretty e
-  pretty (PopHdl eff e) = pretty "popHdl" <+> pretty eff <+> pretty ";" <//> pretty e
+  pretty (Handle e hdls) = pretty "handle" <> nested (line <> pretty e) <> line <> pretty "with" <+> pretty hdls
   pretty (Raise eff xs) = pretty "raise" <+> pretty eff <+> parens (sepMapBy comma pretty xs)
 
 

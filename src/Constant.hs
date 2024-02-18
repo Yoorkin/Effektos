@@ -5,5 +5,6 @@ import Data.Data
 data Constant
   = Integer Int
   | Boolean Bool
+  | String String
   | Unit
   deriving (Eq,Ord,Show,Read,Data)

@@ -16,6 +16,7 @@ $white+                         ;
 "true"                          { tok $ \s -> Boolean (read s) }
 "false"                         { tok $ \s -> Boolean (read s) }
 $digit+                         { tok $ \s -> Number (read s) }
+\" .* \"                    { tok $ \s -> String (read s) }
 $alpha [$alpha $digit \_ \']*   { tok $ \s -> if s `elem` keywords 
                                            then Symbol s
                                            else Identifier s }
@@ -55,6 +56,7 @@ keywords =
   , "with"
   , "resume"
   , "raise"
+  , "extern"
   ]  
 
 
@@ -79,6 +81,7 @@ data TokenKind
     | Identifier String
     | Number Int
     | Boolean Bool
+    | String String
     | Eof
     deriving (Show)
 

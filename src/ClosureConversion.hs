@@ -94,6 +94,10 @@ transl (Apply g k Nothing xs) = do
   code <- fresh
   pure $ LetSel code 0 env (Apply code k (Just env) xs)
 
+transl (Raise effect k args) =
+  pure (Raise effect k args)
+
+
 -- continuation
 --
 -- let k x = l in m ~~>
@@ -120,8 +124,7 @@ transl (LetVal n1 v l) = LetVal n1 v <$> transl l
 transl (LetSel n1 i n2 l) = LetSel n1 i n2 <$> transl l
 transl (LetPrim n1 p ns l) = LetPrim n1 p ns <$> transl l
 transl (Switch n ix ks) = Switch n ix <$> mapM transl ks
-transl (PushHdl eff f l) = PushHdl eff f <$> transl l
-transl (PopHdl eff l) = PopHdl eff <$> transl l
+transl (Handle m hdls) = Handle <$> transl m <*> pure hdls
 transl term@(Raise {}) = pure term
 transl term@(Halt {}) = pure term
 transl term = pure term

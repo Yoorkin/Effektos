@@ -120,12 +120,12 @@ simp census env s p =
                     (Add2, Just [I32 a, I32 b]) ->
                       let v = I32 $ a + b in LetVal n v <$> simp census (addEnv env n v) s t
                     _ -> LetPrim n op ns' <$> fallback
-    PushHdl eff f e ->
-      let f' = applySubst s f
-          e' = simp census env s e
-       in PushHdl eff f' <$> e'
-    PopHdl eff e ->
-      PopHdl eff <$> simp census env s e
+    -- PushHdl eff f e ->
+    --   let f' = applySubst s f
+    --       e' = simp census env s e
+    --    in PushHdl eff f' <$> e'
+    -- PopHdl eff e ->
+    --   PopHdl eff <$> simp census env s e
     Halt n ->
       pure $
         Halt (applySubst s n)
