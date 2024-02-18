@@ -81,6 +81,23 @@ printTest =
   "let print = fun x -> (extern \"console.log\" x) in \
   \print 114514"
 
+stateTest = "let print = fun x -> (extern \"console.log\" x) in \n\
+\let runState = \n\
+\  fun program -> fun initial -> \n\
+\    let s = \n\
+\      handle program () with\n\
+\      | Put (x,k) -> fun ignored -> (resume (k,())) x \n\
+\      | Get (ignored,k) -> fun y -> (resume (k,y)) y \n\
+\    in s initial \n\
+\in \n\
+\runState (fun ignored -> \n\
+\  let x = raise (Get, ()) in \n\
+\  print x; \n\
+\  raise (Put, x + 10); \n\
+\  let x2 = raise (Get, ()) in \n\
+\  print x2  \n\
+\) 5 "
+
 compile :: String -> CompEnvT IO Flat.Program
 compile input = do
       lift $ putStrLn "=========== Source ================"
