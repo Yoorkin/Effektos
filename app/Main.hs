@@ -77,15 +77,24 @@ iterator2 =
   \handle iterator 1 with \
   \| Yield (x,k) -> print x; if x > 10 then 114514 else resume (k,x + 2) "
 
+
+iterator3 =
+  "let print = fun x -> (extern \"console.log\" x) in \
+  \let rec iterator = \
+  \    fun l -> iterator (raise (Yield, l)) in \
+  \handle iterator 1 with \
+  \| Yield (x,k) -> print x; if x > 10 then 1000 else (resume (k,x + 2)) + 1 "
+
 printTest = 
   "let print = fun x -> (extern \"console.log\" x) in \
   \print 114514"
+
 
 stateTest = "let print = fun x -> (extern \"console.log\" x) in \n\
 \let runState = \n\
 \  fun program -> fun initial -> \n\
 \    let s = \n\
-\      handle program () with\n\
+\      handle program () with \n\
 \      | Put (x,k) -> fun ignored -> (resume (k,())) x \n\
 \      | Get (ignored,k) -> fun y -> (resume (k,y)) y \n\
 \    in s initial \n\
@@ -97,6 +106,7 @@ stateTest = "let print = fun x -> (extern \"console.log\" x) in \n\
 \  let x2 = raise (Get, ()) in \n\
 \  print x2  \n\
 \) 5 "
+
 
 compile :: String -> CompEnvT IO Flat.Program
 compile input = do
