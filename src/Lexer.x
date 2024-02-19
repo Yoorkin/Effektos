@@ -57,6 +57,7 @@ keywords =
   , "resume"
   , "raise"
   , "extern"
+  , "effect"
   ]  
 
 

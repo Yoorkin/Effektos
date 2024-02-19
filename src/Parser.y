@@ -33,6 +33,7 @@ import qualified Primitive
     'resume' { (Token _ _ _ (Symbol "resume")) }
     'raise' { (Token _ _ _ (Symbol "raise")) }
     'extern' { (Token _ _ _ (Symbol "extern")) }
+    'effect' { (Token _ _ _ (Symbol "effect")) }
     '->' { (Token _ _ _ (Symbol "->"))}
     ARROW { (Token _ _ _ (Symbol "->"))}
     '>=' { (Token _ _ _ (Symbol ">="))}
@@ -122,6 +123,7 @@ Expr : 'fun' IDENT '->' Expr                     { Fun $2 $4 }
 	 | 'resume' '(' Expr ',' Expr ')'            { Resume $3 $5 }
 	 | 'raise' '(' IDENT ',' Expr ')'            { Raise $3 $5 }
 	 | 'extern' STRING Expr                      { Prim (Primitive.Extern $2) [$3] }
+	 | 'effect' sepBy1(IDENT, ',') 'in' Expr    { EffectDef $2 $4 } 
      | Term                                      { $1 }
 
 MatchingCase : Constant '->' Expr { ($1, $3) }

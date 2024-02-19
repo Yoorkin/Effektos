@@ -75,7 +75,7 @@ iterator2 =
   \let rec iterator = \
   \    fun l -> iterator (raise (Yield, l)) in \
   \handle iterator 1 with \
-  \| Yield (x,k) -> print x; if x > 10 then 114514 else resume (k,x + 2) "
+  \| Yield (x,k) -> if x > 10 then 114514 else (print x; resume (k,x + 2)) "
 
 
 iterator3 =
@@ -83,7 +83,7 @@ iterator3 =
   \let rec iterator = \
   \    fun l -> iterator (raise (Yield, l)) in \
   \handle iterator 1 with \
-  \| Yield (x,k) -> print x; if x > 10 then 1000 else (resume (k,x + 2)) + 1 "
+  \| Yield (x,k) -> if x > 10 then 1000 else (print x; resume (k,x + 2)) + 1 "
 
 printTest = 
   "let print = fun x -> (extern \"console.log\" x) in \
@@ -91,20 +91,23 @@ printTest =
 
 
 stateTest = "let print = fun x -> (extern \"console.log\" x) in \n\
+\effect Put, Get, Return in \n\
 \let runState = \n\
 \  fun program -> fun initial -> \n\
 \    let s = \n\
 \      handle program () with \n\
-\      | Put (x,k) -> fun ignored -> (resume (k,())) x \n\
-\      | Get (ignored,k) -> fun y -> (resume (k,y)) y \n\
+\      | Put (x,k) -> fun ignored -> (k ()) x \n\
+\      | Get (ignored,k) -> fun y -> (k y) y \n\
+\      | Return (x,k) -> fun ignored -> x \n\
 \    in s initial \n\
 \in \n\
 \runState (fun ignored -> \n\
-\  let x = raise (Get, ()) in \n\
+\  let x = Get () in \n\
 \  print x; \n\
-\  raise (Put, x + 10); \n\
-\  let x2 = raise (Get, ()) in \n\
-\  print x2  \n\
+\  Put (x + 10); \n\
+\  let x2 = Get () in \n\
+\  Return x2;  \n\
+\  print 114514 \n\
 \) 5 "
 
 

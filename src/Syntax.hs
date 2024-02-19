@@ -33,6 +33,7 @@ data Expr
   | Handle Expr [(String,Binder,Binder,Expr)]
   | Resume Expr Expr
   | Raise String Expr
+  | EffectDef [String] Expr
   deriving (Show)
 
 

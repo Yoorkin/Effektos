@@ -12,72 +12,68 @@ import qualified Lambda as L
 uniqueName :: String -> CompEnv Name
 uniqueName = freshStr
 
-trans :: L.Expr -> (Name -> CompEnv Term) -> CompEnv Term
-trans (L.Var n) kont = kont n
-trans (L.Abs x e) kont =
-  do
-    f <- uniqueName "f"
-    k <- uniqueName "k"
-    LetVal f <$> (Fn k Nothing [x] <$> trans e (pure . Continue k Nothing)) <*> kont f
-trans (L.Let x e1 e2) kont =
-  do
-    j <- uniqueName "j"
-    LetCont j Nothing x <$> trans e2 kont <*> trans e1 (pure . Continue j Nothing)
-trans (L.App e1 e2) kont =
-  do
-    k <- uniqueName "k"
-    x <- uniqueName "x"
-    trans
-      e1
-      ( \e1 ->
-          trans
-            e2
-            ( \e2 ->
-                LetCont k Nothing x <$> kont x <*> pure (Apply e1 k Nothing [e2])
-            )
-      )
-trans (L.Const c) kont = do
-  constant <- uniqueName "c"
-  let v = case c of
-        Const.Integer v -> I32 v
-        Const.Unit -> Unit
-        Const.Boolean v -> if v then I32 1 else I32 0
-  LetVal constant v <$> kont constant
-trans (L.Tuple xs) kont = do
-  tuple <- uniqueName "t"
-  let f (e : es) acc = trans e (\x -> f es (x : acc))
-      f [] acc = LetVal tuple (Tuple $ reverse acc) <$> kont tuple
-   in f xs []
-trans (L.Select i e) kont =
-  do
-    x <- uniqueName "x"
-    trans e (\e -> LetSel x i e <$> kont x)
-trans (L.PrimOp op es) kont =
-  let f (e : es) acc = trans e (\x -> f es (x : acc))
-      f [] acc = do
-        r <- uniqueName "r"
-        LetPrim r op (reverse acc) <$> kont r
-   in f es []
-trans (L.Constr rep e) kont =
-  case rep of
-    L.TaggedRep _ ->
-      trans e kont
-trans (L.Decon rep e) kont =
-  case rep of
-    L.TaggedRep _ ->
-      trans (L.Select 1 e) kont
-trans (L.Fix ns fs e') kont =
-  let g ((n, (x, e)) : fs) acc = do
+type CurrentContinue = Name
+
+transl :: L.Expr -> CurrentContinue -> (Name -> CurrentContinue -> CompEnv Term) -> CompEnv Term
+transl expression currentFuncK kont =
+  case expression of
+    (L.Var n) -> kont n currentFuncK
+    (L.Abs x e) ->
+      do
+        f <- uniqueName "f"
         k <- uniqueName "k"
-        e <- trans e (pure . Continue k Nothing)
-        g fs ((n, Fn k Nothing [x] e) : acc)
-      g [] acc = LetFns (reverse acc) <$> trans e' kont
-   in g (zip ns fs) []
-trans (L.Switch cond cases _) kont = do
-  let (ix, branches) = unzip cases
-  trans
-    cond
-    ( \cond' ->
+        func <- Fn k Nothing [x] <$> transl e k (\e' _ -> pure $ Continue k Nothing e')
+        LetVal f func <$> kont f currentFuncK
+    (L.Let x e1 e2) ->
+      do
+        j <- uniqueName "j"
+        transl e1 currentFuncK (\e1' cc -> LetCont j Nothing x <$> transl e2 cc kont <*> pure (Continue j Nothing e1'))
+    (L.App e1 e2) ->
+      do
+        k <- uniqueName "k"
+        x <- uniqueName "x"
+        transl e1 currentFuncK $ \e1' currentFuncK ->
+          transl e2 currentFuncK $ \e2' currentFuncK ->
+            LetCont k Nothing x <$> kont x currentFuncK <*> pure (Apply e1' k Nothing [e2'])
+    (L.Const c) -> do
+      constant <- uniqueName "c"
+      let v = case c of
+            Const.Integer v -> I32 v
+            Const.Unit -> Unit
+            Const.Boolean v -> if v then I32 1 else I32 0
+      LetVal constant v <$> kont constant currentFuncK
+    (L.Tuple xs) -> do
+      tuple <- uniqueName "t"
+      let f (e : es) acc = transl e currentFuncK (\x _ -> f es (x : acc))
+          f [] acc = LetVal tuple (Tuple $ reverse acc) <$> kont tuple currentFuncK
+       in f xs []
+    (L.Select i e) -> do
+      x <- uniqueName "x"
+      transl e currentFuncK $ \e currentFuncK -> LetSel x i e <$> kont x currentFuncK
+    (L.PrimOp op es) ->
+      let f (e : es) acc = transl e currentFuncK (\x _ -> f es (x : acc))
+          f [] acc = do
+            r <- uniqueName "r"
+            LetPrim r op (reverse acc) <$> kont r currentFuncK
+       in f es []
+    (L.Constr rep e) ->
+      case rep of
+        L.TaggedRep _ ->
+          transl e currentFuncK kont
+    (L.Decon rep e) ->
+      case rep of
+        L.TaggedRep _ ->
+          transl (L.Select 1 e) currentFuncK kont
+    (L.Fix ns fs e') ->
+      let g ((n, (x, e)) : fs) acc = do
+            k <- uniqueName "k"
+            e <- transl e k (\e' currentFuncK -> pure $ Continue currentFuncK Nothing e')
+            g fs ((n, Fn k Nothing [x] e) : acc)
+          g [] acc = LetFns (reverse acc) <$> transl e' currentFuncK kont
+       in g (zip ns fs) []
+    (L.Switch cond cases _) -> do
+      let (ix, branches) = unzip cases
+      transl cond currentFuncK $ \cond' currentFuncK ->
         let f acc =
               \case
                 (b : bs) -> do
@@ -85,38 +81,47 @@ trans (L.Switch cond cases _) kont = do
                   branchX <- uniqueName "x"
                   c <- freshStr "c"
                   LetCont branchK Nothing branchX
-                    <$> trans b kont
+                    <$> transl b currentFuncK kont
                     <*> f (LetVal c Unit (Continue branchK Nothing c) : acc) bs
                 [] -> pure $ Switch cond' ix (reverse acc)
          in f [] branches
-    )
 
--- The handler function is a normal function, not a continuation
-trans (L.Handle (L.App func arg) hds) kont = do
-    exitK <- uniqueName "exitK"
-    x <- uniqueName "x"
-    trans func $ \func' ->
-      trans arg $ \arg' ->
-        LetCont exitK Nothing x <$> kont x <*>
-          let
-              aux [] acc = pure (Handle (Apply func' exitK Nothing [arg']) acc)
-              aux ((effect, hx, hk, l) : hds') acc = do
-                handler <- freshStr "handler"
-                l' <- trans l (pure . Continue exitK Nothing)
-                m' <- aux hds' ((effect, handler) : acc)
-                let k = hk
-                pure $
-                  LetVal
-                    handler
-                    (Fn k Nothing [hx] l') m'
-           in aux hds []
-trans (L.Raise eff arg) kont = do
-  k <- freshStr "k"
-  x <- freshStr "x"
-  trans arg (\arg' -> LetCont k Nothing x <$> kont x <*> pure (Raise eff k [arg']))
-trans (L.Resume hk e) kont =
-  trans hk (\hk' ->
-  trans e (pure . Continue hk' Nothing))
+    -- The handler function is a normal function, not a continuation
+    (L.Handle (L.App func arg) hds) -> do
+      exitK <- uniqueName "exitK"
+      x <- uniqueName "x"
+      transl func currentFuncK $ \func' currentFuncK ->
+        transl arg currentFuncK $ \arg' currentFuncK ->
+          LetCont exitK Nothing x
+            <$> kont x currentFuncK
+            <*> let aux [] acc = pure (Handle (Apply func' exitK Nothing [arg']) acc)
+                    aux ((effect, hx, hk, l) : hds') acc = do
+                      handler <- freshStr "handler"
+                      k <- freshStr "k"
+                      l' <- transl l k (\l' currentFuncK -> pure $ Continue currentFuncK Nothing l')
+                      m' <- aux hds' ((effect, handler) : acc)
+                      pure $
+                        LetVal
+                          handler
+                          (Fn k Nothing [hx, hk] l')
+                          m'
+                 in aux hds []
+    (L.Raise eff arg) -> do
+      f <- freshStr "resume"
+      k <- freshStr "k"
+      x <- freshStr "x"
+      resumeFunc <- Fn k Nothing [x] <$> kont x k
+      transl arg currentFuncK (\arg' currentFuncK -> pure (LetVal f resumeFunc (Raise eff currentFuncK [arg', f])))
+    (L.Resume f arg) ->
+      transl f currentFuncK $ \f' currentFuncK -> do
+        k <- freshStr "k"
+        x <- freshStr "x"
+        LetCont k Nothing x
+          <$> kont x currentFuncK
+          <*> transl arg currentFuncK (\arg' _ -> pure $ Apply f' k Nothing [arg'])
 
 translate :: L.Expr -> CompEnv Term
-translate e = trans e (pure . Halt)
+translate e = do
+  abortK <- freshStr "k"
+  x <- freshStr "x"
+  LetCont abortK Nothing x (Halt x) <$> transl e abortK (\z cc -> pure $ Continue cc Nothing z)

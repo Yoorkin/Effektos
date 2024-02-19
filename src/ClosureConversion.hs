@@ -50,7 +50,7 @@ transl :: Term -> CompEnvT (State FnClosure) Term
 transl (LetVal n (Fn k Nothing xs l) m) = do
   let fvars = free l \\ (k : xs)
   nfvars <- mapM uniName fvars
-  code <- freshStr "code"
+  code <- freshStr ("code_" ++ baseStr n)
   env <- freshStr "env"
   l' <- wrapProj 1 env nfvars <$> (renames fvars nfvars <$> transl l)
   m' <- transl m
@@ -110,7 +110,7 @@ transl (Raise effect k args) =
 transl (LetCont k Nothing x l m) = do
   let fvars = free l \\ [k, x]
   nfvars <- mapM uniName fvars
-  code <- freshStr "code"
+  code <- freshStr ("code_" ++ baseStr k)
   env <- freshStr "env"
   l' <- wrapProj 1 env nfvars <$> (renames fvars nfvars <$> transl l)
   m' <- transl m

@@ -14,12 +14,16 @@ renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth =
 transl :: Flat.Program -> String
 transl (Program f fs) = renderDoc $ pretty runtime <> hardline <> sepMapBy hardline translFn (f : fs)
     where runtime = "\
+    \function $notnull(x){ if(x===undefined){ \n\
+    \ console.log('undefined') } \n\
+    \ else {return x} \n\
+    \} \n\
     \const $hds = new Map(); \n\
     \function $push(eff,h){ if($hds.has(eff)){ $hds.get(eff).push(h) }else{ $hds.set(eff,[h]) } } \n\
     \function $pop(eff){ $hds.get(eff).pop() } \n\
-    \function $raise(eff,k,x){ \
+    \function $raise(eff,k,x,resume){ \
     \ const h = $hds.get(eff).slice(-1)[0]; \
-    \ h[0](h,k,x) }"
+    \ h[0](h,k,x,resume) }"
 
 translExtern :: String -> [Name] -> Doc ann
 translExtern f xs =
@@ -33,8 +37,8 @@ translVal =
     Unit -> pretty "0"
     (I32 i) -> pretty i
     (Var n) -> pretty n
-    (Proj i n) -> pretty n <> brackets (pretty i)
-    (Tuple ns) -> brackets (sepMapBy comma pretty ns)
+    (Proj i n) -> pretty "$notnull" <> parens (pretty n <> brackets (pretty i))
+    (Tuple ns) -> brackets (sepMapBy comma (\z -> pretty "$notnull" <> parens (pretty z)) ns)
     (PrimOp op ns) ->
       let op2 a b op = pretty a <+> pretty op <+> pretty b in
       case (op, ns) of
