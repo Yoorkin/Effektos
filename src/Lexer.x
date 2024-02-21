@@ -58,6 +58,7 @@ keywords =
   , "raise"
   , "extern"
   , "effect"
+  , "data"
   ]  
 
 

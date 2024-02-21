@@ -34,6 +34,7 @@ import qualified Primitive
     'raise' { (Token _ _ _ (Symbol "raise")) }
     'extern' { (Token _ _ _ (Symbol "extern")) }
     'effect' { (Token _ _ _ (Symbol "effect")) }
+    'data' { (Token _ _ _ (Symbol "data")) }
     '->' { (Token _ _ _ (Symbol "->"))}
     ARROW { (Token _ _ _ (Symbol "->"))}
     '>=' { (Token _ _ _ (Symbol ">="))}
@@ -87,9 +88,12 @@ sepBy(x,delim) : sepBy1(x,delim) { $1 }
 endWith(x,end) : x end { $1 }
 
 
-Start : Expr EOF { Program $1 }
+Start : many(Definition) Expr EOF { Program $1 $2 }
 
+Definition : 'data' IDENT '=' option('|') sepBy1(Constructor,'|') { Data $2 $5 }
+           | 'effect' IDENT '=' Type { Effect $2 $4 }
 
+Constructor : IDENT Type  { ($1,$2) }
 
 Type : IDENT  { TypeVar $1 }
    | Type '->' Type { TypeArrow $1 $3 }
@@ -109,13 +113,24 @@ Op : '+' { $1 }
    | '!=' { $1 }
    | '==' {$1}
 
+Pattern : IDENT                                  { PatVar $1 }
+        | IDENT Pattern                          { PatConstr $1 $2 }
+		| '_'                                    { PatHole }
+		| Constant                               { PatConstant $1 }
+		| '(' sepBy(Pattern,',') ')'             { case $2 of 
+		                                             [] -> PatVar "()"
+													 [x] -> x
+													 xs -> PatTuple xs }
+
+
 Binding : IDENT '=' Expr                         { ($1, $3) }
 
-Expr : 'fun' IDENT '->' Expr                     { Fun $2 $4 }
-     | 'let' Binding 'in' Expr                   { let (n,e) = $2 in Let n e $4 }
-	 | 'let' 'rec' sepBy1(Binding,'and') 'in' Expr  { recBindings $3 $5 }
+Expr : 'fun' Pattern '->' Expr                   { Fun $2 $4 }
+     | 'let' Pattern '=' Expr 'in' Expr          { Let $2 $4 $6 }
+	 | 'let' 'rec' sepBy1(Binding,'and') 'in' Expr  
+	                                             { recBindings $3 $5 }
      | 'if' Expr 'then' Expr 'else' Expr         { If $2 $4 $6 }
-     | 'case' Expr 'of' option('|') sepBy1(MatchingCase,'|') 
+     | 'case' Expr 'of' option('|') sepBy1(Case,'|') 
 	                                             { let (pats,cases) = unzip $5 in Match $2 pats cases }
      | Expr ';' Expr                             { Sequence $1 $3 } 
      | 'handle' Expr 'with' option('|') sepBy1(Handler,'|')  
@@ -123,12 +138,12 @@ Expr : 'fun' IDENT '->' Expr                     { Fun $2 $4 }
 	 | 'resume' '(' Expr ',' Expr ')'            { Resume $3 $5 }
 	 | 'raise' '(' IDENT ',' Expr ')'            { Raise $3 $5 }
 	 | 'extern' STRING Expr                      { Prim (Primitive.Extern $2) [$3] }
-	 | 'effect' sepBy1(IDENT, ',') 'in' Expr    { EffectDef $2 $4 } 
+	 | 'effect' sepBy1(IDENT, ',') 'in' Expr     { EffectDef $2 $4 } 
      | Term                                      { $1 }
 
-MatchingCase : Constant '->' Expr { ($1, $3) }
+Case : Pattern '->' Expr { ($1, $3) }
 
-Handler : IDENT '(' IDENT ',' IDENT ')' '->' Expr { ($1, $3, $5, $8) }
+Handler : Pattern '->' Expr { ($1,$3) }
 
 Term : Term Op Term                              { Prim (selectPrimOp $2) [$1, $3] }
      | Term Atom                                 { App $1 $2 }

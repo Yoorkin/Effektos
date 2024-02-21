@@ -3,7 +3,12 @@ import Primitive
 import Constant
 
 data Program
-  = Program Expr
+  = Program [Definition] Expr
+  deriving (Show)
+
+data Definition
+  = Data String [(String,Type)]
+  | Effect String Type
   deriving (Show)
 
 data Type
@@ -16,21 +21,29 @@ type Binder = String
 
 type Fn = (Binder, Expr)
 
+data Pattern
+  = PatVar String
+  | PatConstr String Pattern
+  | PatConstant Constant
+  | PatTuple [Pattern]
+  | PatHole 
+  deriving (Show)
+
 data Expr
   = Var String
-  | Fun Binder Expr
+  | Fun Pattern Expr
   | App Expr Expr
-  | Let Binder Expr Expr
+  | Let Pattern Expr Expr
   | Fix [Binder] [Fn] Expr
   | If Expr Expr Expr
-  | Match Expr [Constant] [Expr]
+  | Match Expr [Pattern] [Expr]
   | Tuple [Expr]
   | Prim Primitive [Expr]
   | Anno Expr Type
   | Const Constant
   | Sequence Expr Expr
   | Hole
-  | Handle Expr [(String,Binder,Binder,Expr)]
+  | Handle Expr [(Pattern,Expr)]
   | Resume Expr Expr
   | Raise String Expr
   | EffectDef [String] Expr
