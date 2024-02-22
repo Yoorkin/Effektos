@@ -59,6 +59,7 @@ library
       adjunctions
     , array
     , base >=4.7 && <5
+    , cmdargs
     , comonad
     , containers >=0.6.7
     , lens
@@ -85,6 +86,7 @@ executable cpsLab-exe
       adjunctions
     , array
     , base >=4.7 && <5
+    , cmdargs
     , comonad
     , containers >=0.6.7
     , cpsLab
@@ -113,6 +115,7 @@ test-suite cpsLab-test
       adjunctions
     , array
     , base >=4.7 && <5
+    , cmdargs
     , comonad
     , containers >=0.6.7
     , cpsLab

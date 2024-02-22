@@ -20,95 +20,20 @@ import Control.Comonad.Identity (runIdentity)
 import CompileEnv (hoistIO)
 import TransToJS
 import Util (free, bound, var, occur)
+import System.Console.CmdArgs
 
-z = parse . tokenize $ "let compute = fun x -> 5-1+x in let dat = (1,2,3,4) in compute (compute (get2 dat))"
+data CommandOptions
+  = CompileMode String 
+  | TestMode String
+  deriving Show
 
-z1 =
-  "(let i 2 (let f (lambda x (+ x i)) (f (f (f 3)))))"
+compileMode = CompileMode (def &= args)
 
-z2 = parse . tokenize $ "let f = fun x -> x in f 3"
+testMode = TestMode (def &= args)
 
-eff =
-  "let rec consoleHandler = fun e -> \
-  \   handle e with \
-  \   | Print(x,k) -> k () \
-  \   | Input(x,k) -> let plus1 = fun x -> x + 1 in k (plus1(plus1(5))) \
-  \in \
-  \let rec loop = fun n -> if n > 0 then (Print n; loop (n-1)) else () in \
-  \consoleHandler (loop 5)"
-
-eff1 =
-  "let rec consoleHandler = fun e -> \
-  \   handle e with \
-  \   | Print(x,k) -> output x; consoleHandler (k ()) \
-  \   | Input(x,k) -> consoleHandler (k ()) \
-  \in \
-  \consoleHandler (loop 5)"
-
-mutrec =
-  "let y = 2 in let rec f = fun x -> g (x + y) \
-  \and g = fun x -> if 4 > x then f (x + y) else x in \
-  \f 1"
-
-test1 =
-  "let n = 5 + 2 in let f = fun x -> x + n in f (f 114)"
-
-test2 =
-  "let f = fun x -> x + 5 in f (f 114)"
-
-closureMap = 
-  "let empty = fun key -> () in \
-  \let append = fun k -> fun v -> fun m -> \
-  \             (fun x -> if x == k then v else m x) in \
-  \let table = append 1 2 empty in \
-  \table 4"
-
-iterator =
-  "let print = fun x -> (extern \"console.log\" x) in \
-  \let rec iter = fun x -> let n = raise (Yield,x) in print n; iter n in \
-  \handle iter 1 with \
-  \| Yield (x,k) -> if x > 5 then 114514 else resume (k,x + 2) "
-
-
-iterator2 =
-  "let print = fun x -> (extern \"console.log\" x) in \
-  \let rec iterator = \
-  \    fun l -> iterator (raise (Yield, l)) in \
-  \handle iterator 1 with \
-  \| Yield (x,k) -> if x > 10 then 114514 else (print x; resume (k,x + 2)) "
-
-
-iterator3 =
-  "let print = fun x -> (extern \"console.log\" x) in \
-  \let rec iterator = \
-  \    fun l -> iterator (raise (Yield, l)) in \
-  \handle iterator 1 with \
-  \| Yield (x,k) -> if x > 10 then 1000 else (print x; resume (k,x + 2)) + 1 "
-
-printTest = 
-  "let print = fun x -> (extern \"console.log\" x) in \
-  \print 114514"
-
-
-stateTest = "let print = fun x -> (extern \"console.log\" x) in \n\
-\effect Put, Get, Return in \n\
-\let runState = \n\
-\  fun program -> fun initial -> \n\
-\    let s = \n\
-\      handle program () with \n\
-\      | Put (x,k) -> fun ignored -> (k ()) x \n\
-\      | Get (ignored,k) -> fun y -> (k y) y \n\
-\      | Return (x,k) -> fun ignored -> x \n\
-\    in s initial \n\
-\in \n\
-\runState (fun ignored -> \n\
-\  let x = Get () in \n\
-\  print x; \n\
-\  Put (x + 10); \n\
-\  let x2 = Get () in \n\
-\  Return x2;  \n\
-\  print 114514 \n\
-\) 5 "
+  
+main :: IO ()
+main = print =<< cmdArgs (modes [compileMode,testMode])
 
 
 compile :: String -> CompEnvT IO Flat.Program
@@ -145,7 +70,4 @@ compile input = do
       pure flat
 
 
-main :: IO ()
-main = do
-  pPrint eff1
 

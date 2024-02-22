@@ -1,0 +1,3 @@
+let y = 2 in let rec f = fun x -> g (x + y) 
+and g = fun x -> if 4 > x then f (x + y) else x in
+f 1

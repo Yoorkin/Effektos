@@ -1,0 +1,2 @@
+let print = fun x -> (extern "console.log" x) in 
+print 114514

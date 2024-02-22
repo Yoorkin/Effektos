@@ -1,0 +1,5 @@
+let empty = fun key -> () in 
+let append = fun k -> fun v -> fun m -> 
+           (fun x -> if x == k then v else m x) in 
+let table = append 1 2 empty in 
+table 4

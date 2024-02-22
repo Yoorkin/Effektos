@@ -1,0 +1,19 @@
+let print = fun x -> (extern "console.log" x) in n
+effect Put, Get, Return in n
+let runState = n
+  fun program -> fun initial -> n
+    let s = n
+      handle program () with n
+      | Put (x,k) -> fun ignored -> (k ()) x n
+      | Get (ignored,k) -> fun y -> (k y) y n
+      | Return (x,k) -> fun ignored -> x n
+    in s initial n
+in n
+runState (fun ignored -> n
+  let x = Get () in n
+  print x; n
+  Put (x + 10); n
+  let x2 = Get () in n
+  Return x2;  n
+  print 114514 n
+) 5

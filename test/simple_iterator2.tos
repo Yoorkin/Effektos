@@ -1,0 +1,5 @@
+let print = fun x -> (extern "console.log" x) in 
+let rec iterator = 
+  fun l -> iterator (raise (Yield, l)) in 
+handle iterator 1 with 
+| Yield (x,k) -> if x > 10 then 114514 else (print x; resume (k,x + 2)) 
