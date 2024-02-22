@@ -1,4 +1,4 @@
-# cpsLab
+# Effektos
 
 This repo is an experimental project aiming to build a functional-style language with CPS IR.
 
