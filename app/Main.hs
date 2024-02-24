@@ -1,73 +1,103 @@
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Main (main) where
 
-import qualified Simp
 import qualified ClosureConversion
 import CompileEnv
+import Control.Monad (when)
 import Control.Monad.State.Lazy
-import qualified Flat
 import qualified HoistToFlat
 import Lexer (tokenize)
 import Parser (parse)
+import qualified Simp
 import qualified SyntaxToLambda
+import System.Console.CmdArgs
 import Text.Pretty.Simple (pPrint)
 import TransToCPS
-import Uniquify (uniquifyTerm)
-import Control.Monad.Morph (hoist, generalize)
-import qualified Lambda
-import Control.Comonad.Identity (runIdentity)
-import CompileEnv (hoistIO)
 import TransToJS
-import Util (free, bound, var, occur)
-import System.Console.CmdArgs
+import Uniquify (uniquifyTerm)
 
-data CommandOptions
-  = CompileMode String 
-  | TestMode String
-  deriving Show
+data Effektos = Compile
+  { files :: [FilePath],
+    optimize :: Bool,
+    show_input :: Bool,
+    debug_tokens :: Bool,
+    debug_lambda :: Bool,
+    debug_uniquify :: Bool,
+    debug_cps :: Bool,
+    debug_simplify :: Bool,
+    debug_closure_conversion :: Bool,
+    debug_flat :: Bool,
+    debug_js :: Bool
+  }
+  deriving (Show, Data, Typeable)
 
-compileMode = CompileMode (def &= args)
+type CommandOptions = Effektos
 
-testMode = TestMode (def &= args)
+compileMode :: Effektos
+compileMode =
+  Compile
+    { files = def &= args &= typ "FILES/DIRS",
+      optimize = def &= help "enable optimization",
+      show_input = def,
+      debug_tokens = def,
+      debug_lambda = def,
+      debug_uniquify = def,
+      debug_cps = def,
+      debug_simplify = def,
+      debug_closure_conversion = def,
+      debug_flat = def,
+      debug_js = def
+    }
 
-  
 main :: IO ()
-main = print =<< cmdArgs (modes [compileMode,testMode])
+main = do
+  options <- cmdArgs (modes [compileMode])
+  evalStateT (pipeline options) mkCompStates
 
-
-compile :: String -> CompEnvT IO Flat.Program
-compile input = do
-      lift $ putStrLn "=========== Source ================"
-      lift $ putStrLn input
-      lift $ putStrLn "=========== Tokens ================"
-      let tokens = tokenize input 
-      lift $ pPrint tokens
-      lift $ putStrLn "=========== Lambda ================"
-      let syntax = parse tokens
-      lambda <- hoistIO (SyntaxToLambda.transProg syntax)
-      lift $ pPrint lambda
-      -- lift $ print lambda
-      lift $ putStrLn "=========== Uniquified ================"
-      lambda <- hoistIO (Uniquify.uniquifyTerm lambda)
-      lift $ print lambda
-      -- lift $ print cps
-      lift $ putStrLn "=========== CPS ================"
-      cps <- hoistIO (TransToCPS.translate lambda)
-      lift $ print cps
-      lift $ putStrLn "=========== Simplified CPS ================"
-      -- cps <- hoistIO (Simp.simplify cps)
-      lift $ print cps
-      lift $ putStrLn "=========== Closure Passing Style ================"
-      clo <- hoistIO (ClosureConversion.translClosure cps)
-      lift $ print clo
-      lift $ putStrLn "=========== Flat ================"
-      flat <- hoistIO (HoistToFlat.hoistToFlat clo)
-      lift $ print flat
-      lift $ putStrLn "=========== JS ================"
-      let js = TransToJS.transl flat
-      lift $ putStrLn js
-      pure flat
-
-
+pipeline :: CommandOptions -> CompEnvT IO ()
+pipeline options = do
+  input <- lift $ readFile (head . files $ options)
+  when (show_input options) $ do
+    lift $ putStrLn "=========== Source ================"
+    lift $ putStrLn input
+  let tokens = tokenize input
+  when (debug_tokens options) $ do
+    lift $ putStrLn "=========== Tokens ================"
+    lift $ pPrint tokens
+  let syntax = parse tokens
+  lambda <- hoistIO (SyntaxToLambda.transProg syntax)
+  when (debug_lambda options) $ do
+    lift $ putStrLn "=========== Lambda ================"
+    lift $ pPrint lambda
+  lambda <- hoistIO (Uniquify.uniquifyTerm lambda)
+  when (debug_uniquify options) $ do
+    lift $ putStrLn "=========== Uniquified ================"
+    lift $ print lambda
+  -- lift $ print cps
+  cps <- hoistIO (TransToCPS.translate lambda)
+  when (debug_cps options) $ do
+    lift $ putStrLn "=========== CPS ================"
+    lift $ print cps
+  cps <-
+    if optimize options
+      then do
+        r <- hoistIO (Simp.simplify cps)
+        when (debug_simplify options) $ do
+          lift $ putStrLn "=========== Simplified CPS ================"
+          lift $ print r
+        pure r
+      else pure cps
+  clo <- hoistIO (ClosureConversion.translClosure cps)
+  when (debug_closure_conversion options) $ do
+    lift $ putStrLn "=========== Closure Passing Style ================"
+    lift $ print clo
+  flat <- hoistIO (HoistToFlat.hoistToFlat clo)
+  when (debug_flat options) $ do
+    lift $ putStrLn "=========== Flat ================"
+    lift $ print flat
+  let js = TransToJS.transl flat
+  when (debug_js options) $ do
+    lift $ putStrLn "=========== JS ================"
+    lift $ putStrLn js
 
