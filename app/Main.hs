@@ -22,6 +22,7 @@ data Effektos = Compile
     optimize :: Bool,
     show_input :: Bool,
     debug_tokens :: Bool,
+    debug_syntax :: Bool,
     debug_lambda :: Bool,
     debug_uniquify :: Bool,
     debug_cps :: Bool,
@@ -41,6 +42,7 @@ compileMode =
       optimize = def &= help "enable optimization",
       show_input = def,
       debug_tokens = def,
+      debug_syntax = def,
       debug_lambda = def,
       debug_uniquify = def,
       debug_cps = def,
@@ -66,6 +68,9 @@ pipeline options = do
     lift $ putStrLn "=========== Tokens ================"
     lift $ putStrLn (showTokens tokens)
   let syntax = parse tokens
+  when (debug_syntax options) $ do
+    lift $ putStrLn "=========== Syntax ================"
+    lift $ pPrint syntax
   lambda <- hoistIO (SyntaxToLambda.transProg syntax)
   when (debug_lambda options) $ do
     lift $ putStrLn "=========== Lambda ================"

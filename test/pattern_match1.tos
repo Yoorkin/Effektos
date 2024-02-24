@@ -1,0 +1,11 @@
+data Bool = T () | F ()
+data Foo = Bar1 (Bool,Bool,Bool)
+
+let a = () in
+
+case a of
+| Bar1 (_  , F (), T _) -> 1
+| Bar1 (F _, T _, _  ) -> 2
+| Bar1 (_  , _  , F _) -> 3
+| Bar1 (_  , _  , T _) -> 4
+ 

@@ -5,7 +5,8 @@ module Syntax
     Fn,
     Expr (..),
     Pattern(..),
-    Definition(..)
+    Definition(..),
+    Constr
   )
 where
 
@@ -16,8 +17,10 @@ data Program
   = Program [Definition] Expr
   deriving (Show)
 
+type Constr = String
+
 data Definition
-  = Data String [(String, Type)]
+  = Data String [(Constr, [Type])]
   | Effect String Type
   deriving (Show)
 
@@ -33,10 +36,11 @@ type Fn = (Pattern, Expr)
 
 data Pattern
   = PatVar String
-  | PatConstr String Pattern
+  | PatConstr Constr [Pattern]
   | PatConstant Constant
   | PatTuple [Pattern]
-  | PatHole
+  | PatOr Pattern Pattern
+  | PatWildCard
   deriving (Show)
 
 data Expr

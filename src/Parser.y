@@ -93,11 +93,11 @@ Start : many(Definition) Expr EOF { Program $1 $2 }
 Definition : 'data' IDENT '=' option('|') sepBy1(Constructor,'|') { Data $2 $5 }
            | 'effect' IDENT '=' Type { Effect $2 $4 }
 
-Constructor : IDENT Type  { ($1,$2) }
+Constructor : IDENT many(Type)  { ($1,$2) }
 
 Type : IDENT  { TypeVar $1 }
    | Type '->' Type { TypeArrow $1 $3 }
-   | '(' sepBy1(Type,',') ')' { case $2 of
+   | '(' sepBy(Type,',') ')' { case $2 of
                                    [] -> TypeVar "unit"
                                    [x] -> x
                                    xs -> TypeTuple xs }
@@ -113,9 +113,8 @@ Op : '+' { $1 }
    | '!=' { $1 }
    | '==' {$1}
 
-Pattern : IDENT                                  { PatVar $1 }
-        | IDENT Pattern                          { PatConstr $1 $2 }
-		| '_'                                    { PatHole }
+Pattern : IDENT many(Pattern)                    { PatConstr $1 $2 }
+		| '_'                                    { PatWildCard }
 		| Constant                               { PatConstant $1 }
 		| '(' sepBy(Pattern,',') ')'             { case $2 of 
                                                      [] -> PatVar "()"
