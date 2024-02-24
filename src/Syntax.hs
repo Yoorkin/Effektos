@@ -1,13 +1,23 @@
-module Syntax(Program(..), Type(..), Binder, Fn, Expr(..)) where
-import Primitive
+module Syntax
+  ( Program (..),
+    Type (..),
+    Binder,
+    Fn,
+    Expr (..),
+    Pattern(..),
+    Definition(..)
+  )
+where
+
 import Constant
+import Primitive
 
 data Program
   = Program [Definition] Expr
   deriving (Show)
 
 data Definition
-  = Data String [(String,Type)]
+  = Data String [(String, Type)]
   | Effect String Type
   deriving (Show)
 
@@ -19,14 +29,14 @@ data Type
 
 type Binder = String
 
-type Fn = (Binder, Expr)
+type Fn = (Pattern, Expr)
 
 data Pattern
   = PatVar String
   | PatConstr String Pattern
   | PatConstant Constant
   | PatTuple [Pattern]
-  | PatHole 
+  | PatHole
   deriving (Show)
 
 data Expr
@@ -43,10 +53,8 @@ data Expr
   | Const Constant
   | Sequence Expr Expr
   | Hole
-  | Handle Expr [(Pattern,Expr)]
+  | Handle Expr [(Pattern, Expr)]
   | Resume Expr Expr
   | Raise String Expr
   | EffectDef [String] Expr
   deriving (Show)
-
-

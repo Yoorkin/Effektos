@@ -39,7 +39,7 @@ import qualified Primitive
     ARROW { (Token _ _ _ (Symbol "->"))}
     '>=' { (Token _ _ _ (Symbol ">="))}
     '<=' { (Token _ _ _ (Symbol "<="))}
-	'==' { (Token _ _ _ (Symbol "=="))}
+    '==' { (Token _ _ _ (Symbol "=="))}
     '=' { (Token _ _ _ (Symbol "="))}
     '!=' { (Token _ _ _ (Symbol "!="))}
     ',' { (Token _ _ _ (Symbol ","))} 
@@ -98,9 +98,9 @@ Constructor : IDENT Type  { ($1,$2) }
 Type : IDENT  { TypeVar $1 }
    | Type '->' Type { TypeArrow $1 $3 }
    | '(' sepBy1(Type,',') ')' { case $2 of
-                                           [] -> TypeVar "unit"
-                                           [x] -> x
-                                           xs -> TypeTuple xs }
+                                   [] -> TypeVar "unit"
+                                   [x] -> x
+                                   xs -> TypeTuple xs }
 
 Op : '+' { $1 } 
    | '-' { $1 }
@@ -118,9 +118,9 @@ Pattern : IDENT                                  { PatVar $1 }
 		| '_'                                    { PatHole }
 		| Constant                               { PatConstant $1 }
 		| '(' sepBy(Pattern,',') ')'             { case $2 of 
-		                                             [] -> PatVar "()"
-													 [x] -> x
-													 xs -> PatTuple xs }
+                                                     [] -> PatVar "()"
+                                                     [x] -> x
+                                                     xs -> PatTuple xs }
 
 
 Binding : IDENT '=' Expr                         { ($1, $3) }
