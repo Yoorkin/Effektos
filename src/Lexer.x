@@ -1,5 +1,6 @@
 {
-module Lexer(tokenize,Token(..),TokenKind(..)) where
+module Lexer(tokenize,Token(..),TokenKind(..),showTokens) where
+import Data.List
 }
 
 %wrapper "posn"
@@ -77,6 +78,11 @@ instance Show Token where
                                   ++ show col ++ "," 
 								  ++ show len  
 								  ++ ")"
+
+showTokens tokens = 
+  case tokens of 
+    [] -> "[]"
+    (x:xs) -> "[ " ++ foldl' (\acc a -> acc ++ "\n, " ++ show a) (show x) xs ++ "\n]"
 
 data TokenKind
     = Symbol String

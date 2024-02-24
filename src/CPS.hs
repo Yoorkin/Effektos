@@ -69,8 +69,8 @@ instance Pretty Value where
   pretty (I32 i) = pretty "i32" <+> pretty i
   pretty Unit = pretty "()"
   pretty (Tuple es) = lparen <> concatWith (\x y -> x <> comma <+> y) (map pretty es) <> rparen
-  pretty (Cont env n t) = group (pretty "λ" <> braces (pretty env) <+> pretty n <> dot <> pretty t)
-  pretty (Fn k env x t) = group (parens $ pretty "λ" <+> pretty k <+> braces (pretty env) <+> pretty x <+> dot <> nested (line <> pretty t))
+  pretty (Cont env n t) = group (pretty "Cont" <> braces (pretty env) <+> pretty n <> pretty "->" <> pretty t)
+  pretty (Fn k env x t) = group (parens $ pretty "Fun" <+> pretty k <+> braces (pretty env) <+> pretty x <+> pretty "->" <> nested (line <> pretty t))
 
 instance Pretty Term where
   pretty (LetVal n v t) =

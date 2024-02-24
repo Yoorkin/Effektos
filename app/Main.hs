@@ -7,7 +7,7 @@ import CompileEnv
 import Control.Monad (when)
 import Control.Monad.State.Lazy
 import qualified HoistToFlat
-import Lexer (tokenize)
+import Lexer (tokenize,showTokens)
 import Parser (parse)
 import qualified Simp
 import qualified SyntaxToLambda
@@ -64,7 +64,7 @@ pipeline options = do
   let tokens = tokenize input
   when (debug_tokens options) $ do
     lift $ putStrLn "=========== Tokens ================"
-    lift $ pPrint tokens
+    lift $ putStrLn (showTokens tokens)
   let syntax = parse tokens
   lambda <- hoistIO (SyntaxToLambda.transProg syntax)
   when (debug_lambda options) $ do
@@ -74,7 +74,6 @@ pipeline options = do
   when (debug_uniquify options) $ do
     lift $ putStrLn "=========== Uniquified ================"
     lift $ print lambda
-  -- lift $ print cps
   cps <- hoistIO (TransToCPS.translate lambda)
   when (debug_cps options) $ do
     lift $ putStrLn "=========== CPS ================"
