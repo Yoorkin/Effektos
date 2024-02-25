@@ -60,10 +60,6 @@ transl expression currentFuncK kont =
       case rep of
         L.TaggedRep _ ->
           transl e currentFuncK kont
-    (L.Decon rep e) ->
-      case rep of
-        L.TaggedRep _ ->
-          transl (L.Select 1 e) currentFuncK kont
     (L.Fix ns fs e') ->
       let g ((n, (x, e)) : fs) acc = do
             k <- uniqueName "k"

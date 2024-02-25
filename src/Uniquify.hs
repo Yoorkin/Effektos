@@ -37,7 +37,6 @@ uniquify st =
     (Select i e) -> Select i <$> go st e
     (PrimOp p es) -> PrimOp p <$> mapM (go st) es
     (Constr r e) -> Constr r <$> go st e
-    (Decon r e) -> Decon r <$> go st e
     (Switch e cases fallback) ->
       Switch <$> go st e <*> mapM (\(a, b) -> (a,) <$> go st b) cases <*> mapM (go st) fallback
     (Handle e effs) ->

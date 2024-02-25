@@ -1,13 +1,13 @@
 data Bool = T | F 
-data Foo = Bar1 Bool Bool Bool
+data Foo = Bar1 Int Bool Bool Bool
          | Bar2 Bool
 
-let a = Bar1 F T F in
+let a = Bar1 5 F T F in
 
 case a of
-| (Bar1 x F T) -> 1
-| (Bar1 F T y) -> 2
-| (Bar1 _ _ F) -> 3
-| (Bar1 _ _ T) -> 4
+| (Bar1 6 x F T) -> 1
+| (Bar1 7 F T y) -> 2
+| (Bar1 8 _ _ F) -> 3
+| (Bar1 8 _ _ T) -> 4
 | z -> 5
  

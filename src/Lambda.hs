@@ -21,6 +21,15 @@ data Constructor
   | ConstCon Constant
   deriving (Eq, Ord, Show, Read, Data)
 
+--
+-- Currently the memory layout of datatype is simple:
+--  +-----+---------------------------+
+--  | tag | playload1, ..., playloadN |
+--  +-----+---------------------------+
+-- Each tag and playload is occupying one word, the length of playload are determined by tag.
+-- Some specific optimization can be used in future.
+-- 
+
 type Effect = String
 
 data Expr
@@ -34,7 +43,6 @@ data Expr
   | Select Int Expr
   | PrimOp Primitive [Expr]
   | Constr Repr Expr
-  | Decon Repr Expr
   | Switch Expr [(Int, Expr)] (Maybe Expr)
   | Handle Expr [(Effect, Name, Name, Expr)]
   | Raise Effect Expr
