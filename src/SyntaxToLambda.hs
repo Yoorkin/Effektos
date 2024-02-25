@@ -6,9 +6,12 @@ module SyntaxToLambda (transProg) where
 
 import CompileEnv
 import Constant
+import Data.Map.Lazy (Map)
+import qualified Data.Map.Lazy as Map
+import DefinitionInfo
 import qualified Lambda as L
-import Syntax as S
 import qualified PatternMatch
+import Syntax as S
 
 constToInt :: Constant -> Int
 constToInt x =
@@ -19,21 +22,61 @@ constToInt x =
     Unit -> 0
 
 transProg :: Program -> CompEnv L.Expr
-transProg (Program defs expr) = translExpr defs [] expr
+transProg (Program defs expr) = translExpr datatypes constrs effects expr
+  where
+    (datatypes, constrs, effects) = preprocessDefs defs
 
-translExpr :: [Definition] -> [String] -> Expr -> CompEnv L.Expr
-translExpr defs effects expr =
-  let go = translExpr defs effects
+preprocessDefs :: [Definition] -> (Map String DataTypeInfo, Map String ConstrInfo, Map String EffectInfo)
+preprocessDefs = aux initialDataTypes initialConstrs []
+  where
+    aux datatypes constrs effects [] =
+      (Map.fromList datatypes, Map.fromList constrs, Map.fromList effects)
+    aux datatypes constrs effects (def : defs) =
+      case def of
+        (Effect {}) -> aux datatypes constrs effects defs
+        (Data typename pairs) ->
+          let constrs' = map (mkConstrInfo typename) pairs
+              datatype = (typename, DataTypeInfo (map fst pairs))
+           in aux (datatype : datatypes) (constrs' ++ constrs) effects defs
+    mkConstrInfo typename (constr, args) = (constr, ConstrInfo (length args) typename)
+    initialDataTypes =
+      [ ("Unit", DataTypeInfo ["()"])
+      ]
+    initialConstrs =
+      [ ("()", ConstrInfo 0 "Unit")
+      ]
+
+preprocessPattern :: Map String ConstrInfo -> Pattern -> Pattern
+preprocessPattern constrs pat =
+   let go = preprocessPattern constrs in
+      case pat of
+        (PatConstr c []) | c `Map.notMember` constrs -> PatVar c
+        (PatVar {}) -> pat
+        (PatConstr c qs) -> PatConstr c (map go qs)
+        (PatConstant {}) -> pat
+        (PatTuple qs) -> PatTuple (map go qs)
+        (PatOr q1 q2) -> PatOr (go q1) (go q2)
+        PatWildCard -> pat
+
+
+translExpr ::
+  Map String DataTypeInfo ->
+  Map String ConstrInfo ->
+  Map String EffectInfo ->
+  Expr ->
+  CompEnv L.Expr
+translExpr datatypes constrs effects expr =
+  let go = translExpr datatypes constrs effects
    in case expr of
         (Var n) -> pure $ L.Var (synName n)
-        (Fun (PatVar b) e) -> L.Abs (synName b) <$> go e
+        (Fun (PatConstr b []) e) | b `Map.notMember` constrs -> L.Abs (synName b) <$> go e
         (App f a) ->
           case f of
-            (Var n) | n `elem` effects -> go (Raise n a)
+            (Var n) | n `Map.member` effects -> go (Raise n a)
             _ -> L.App <$> go f <*> go a
-        (Let (PatVar b) e m) -> L.Let (synName b) <$> go e <*> go m
+        (Let (PatConstr b []) e m) | b `Map.notMember` constrs -> L.Let (synName b) <$> go e <*> go m
         (Fix bs fns e) ->
-          let f (PatVar b, e') = (,) (synName b) <$> go e'
+          let f (PatConstr b [], e') | b `Map.notMember` constrs = (,) (synName b) <$> go e'
               bs' = map synName bs
            in L.Fix bs' <$> mapM f fns <*> go e
         (If c y n) -> do
@@ -41,7 +84,8 @@ translExpr defs effects expr =
           n' <- go n
           L.Switch <$> go c <*> pure [(1, y'), (0, n')] <*> pure Nothing
         (Match e ps es) -> do
-          let e = PatternMatch.transl expr defs
+          let ps' = map (preprocessPattern constrs) ps
+          let e = PatternMatch.transl datatypes constrs (Match e ps' es)
           es' <- mapM go es
           L.Switch <$> go e <*> pure (map (1,) es') <*> pure Nothing
         (Tuple xs) -> L.Tuple <$> mapM go xs
@@ -55,22 +99,4 @@ translExpr defs effects expr =
         --    in L.Handle <$> go e <*> mapM f hds
         (Raise eff x) -> L.Raise eff <$> go x
         (Resume k a) -> L.Resume <$> go k <*> go a
-        (EffectDef effs e) -> translExpr defs effs e
         _ -> error $ show expr
-
--- TODO: the translation of pattern matching needs some information:
---  1. The arity of each data constructor.
---  2. The data type to which each data constructor belongs.
---  3. All constructors of a given data typ.
---
--- additionally, to distinguish between `PatVar id` and `PatConstr id []` for `id`:
---  1. Provide all constructors name
---
--- possible solution:
---
--- type Arity = Int
--- type DataType = String
--- data ConstrInfo = Constructor Arity DataType
--- data DataInfo = DataInfo ConstrInfo
--- dataMap :: Map DataType DataInfo
--- constrMap :: Map Constr ConstrInfo

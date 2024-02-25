@@ -31,6 +31,7 @@ library
       CompileEnv
       Constant
       CPS
+      DefinitionInfo
       Flat
       Flatvm
       HoistToFlat

@@ -1,11 +1,13 @@
-data Bool = T () | F ()
-data Foo = Bar1 (Bool,Bool,Bool)
+data Bool = T | F 
+data Foo = Bar1 Bool Bool Bool
+         | Bar2 Bool
 
-let a = () in
+let a = Bar1 F T F in
 
 case a of
-| Bar1 (_  , F (), T _) -> 1
-| Bar1 (F _, T _, _  ) -> 2
-| Bar1 (_  , _  , F _) -> 3
-| Bar1 (_  , _  , T _) -> 4
+| (Bar1 x F T) -> 1
+| (Bar1 F T y) -> 2
+| (Bar1 _ _ F) -> 3
+| (Bar1 _ _ T) -> 4
+| z -> 5
  

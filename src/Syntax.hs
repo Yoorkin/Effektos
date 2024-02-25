@@ -60,5 +60,4 @@ data Expr
   | Handle Expr [(Pattern, Expr)]
   | Resume Expr Expr
   | Raise String Expr
-  | EffectDef [String] Expr
   deriving (Show)

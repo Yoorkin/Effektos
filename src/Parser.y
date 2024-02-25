@@ -113,11 +113,12 @@ Op : '+' { $1 }
    | '!=' { $1 }
    | '==' {$1}
 
-Pattern : IDENT many(Pattern)                    { PatConstr $1 $2 }
+Pattern : IDENT                                  { PatConstr $1 [] }
+        | '(' IDENT many1(Pattern) ')'           { PatConstr $2 $3 }
 		| '_'                                    { PatWildCard }
 		| Constant                               { PatConstant $1 }
 		| '(' sepBy(Pattern,',') ')'             { case $2 of 
-                                                     [] -> PatVar "()"
+                                                     [] -> PatConstr "()" []
                                                      [x] -> x
                                                      xs -> PatTuple xs }
 
@@ -137,7 +138,6 @@ Expr : 'fun' Pattern '->' Expr                   { Fun $2 $4 }
 	 | 'resume' '(' Expr ',' Expr ')'            { Resume $3 $5 }
 	 | 'raise' '(' IDENT ',' Expr ')'            { Raise $3 $5 }
 	 | 'extern' STRING Expr                      { Prim (Primitive.Extern $2) [$3] }
-	 | 'effect' sepBy1(IDENT, ',') 'in' Expr     { EffectDef $2 $4 } 
      | Term                                      { $1 }
 
 Case : Pattern '->' Expr { ($1, $3) }
