@@ -103,6 +103,7 @@ uniName (SynName n) = UniName n <$> stamp (Just n)
 uniName (UniName n _) = UniName n <$> stamp (Just n)
 uniName (GenName _) = GenName <$> stamp Nothing
 
+
 baseStr :: Name -> String
 baseStr (SynName n) = n
 baseStr (UniName n _) = n

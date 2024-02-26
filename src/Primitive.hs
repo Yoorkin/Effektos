@@ -20,6 +20,7 @@ data Primitive
   | Not
   | And
   | Xor
+  | Abort
   | Extern String
   deriving (Eq,Ord,Show,Read,Data)
 

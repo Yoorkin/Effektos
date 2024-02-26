@@ -12,6 +12,7 @@ import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Primitive
 import CompileEnv
+import qualified Constant as C
 
 data Program
   = Program Fn [Fn]
@@ -44,7 +45,7 @@ type Effect = String
 
 data Expr
   = Apply Name [Name]
-  | Switch Name [Int] [Expr] (Maybe Expr)
+  | Switch Name [C.Constant] [Expr] (Maybe Expr)
   | Handle Expr [(Effect, Name)]
   | Raise Effect [Name]
   | Exit Name
@@ -82,7 +83,7 @@ instance Pretty Expr where
       <> nested (hardline <> sepMapBy hardline f (zip index branches))
       <> case fallback of (Just f) -> pretty "_ ->" <+> pretty f; Nothing -> pretty ""
     where
-      f (i, e) = pretty (i :: Int) <+> pretty "->" <+> pretty e
+      f (i, e) = pretty (show i) <+> pretty "->" <+> pretty e
   pretty (Exit n) = pretty "exit" <+> pretty n
   pretty (Handle e hdls) = pretty "handle" <> nested (line <> pretty e) <> line <> pretty "with" <+> pretty hdls
   pretty (Raise eff xs) = pretty "raise" <+> pretty eff <+> parens (sepMapBy comma pretty xs)

@@ -82,12 +82,10 @@ translExpr datatypes constrs effects expr =
         (If c y n) -> do
           y' <- go y
           n' <- go n
-          L.Switch <$> go c <*> pure [(1, y'), (0, n')] <*> pure Nothing
+          L.Switch <$> go c <*> pure [(Constant.Integer 1, y'), (Constant.Integer 0, n')] <*> pure Nothing
         (Match e ps es) -> do
           let ps' = map (preprocessPattern constrs) ps
-          let e = PatternMatch.transl datatypes constrs (Match e ps' es)
-          es' <- mapM go es
-          L.Switch <$> go e <*> pure (map (1,) es') <*> pure Nothing
+          PatternMatch.transl datatypes constrs go (Match e ps' es)
         (Tuple xs) -> L.Tuple <$> mapM go xs
         (Prim op es) -> L.PrimOp op <$> mapM go es
         (Anno e _) -> go e

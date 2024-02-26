@@ -9,6 +9,7 @@ import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Primitive
 import CompileEnv
+import qualified Constant as C
 
 
 data Value
@@ -34,7 +35,7 @@ data Term
   | Continue Name (Maybe Name) Name
   | Apply Function Cont (Maybe Closure) [Argument]
   | LetPrim Name Primitive [Name] Term
-  | Switch Name [Int] [Term]
+  | Switch Name [C.Constant] [Term]
   | Handle Term [(Effect, Function)]
   | Raise Effect Cont [Argument] -- h k x
   | Halt Name
@@ -151,7 +152,7 @@ instance Pretty Term where
       <> colon
       <> nested (hardline <> sepMapBy hardline f (zip ix ks))
     where
-      f (i, e) = pretty i <+> pretty "->" <+> align (pretty e)
+      f (i, e) = pretty (show i) <+> pretty "->" <+> align (pretty e)
 
 sepMapBy :: Doc ann -> (a -> Doc ann) -> [a] -> Doc ann
 sepMapBy sep' f xs = concatWith (\a b -> a <> sep' <> b) (map f xs)

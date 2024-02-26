@@ -9,6 +9,7 @@ import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import qualified Primitive as P
 import Text.RawString.QQ
+import qualified Constant as C
 
 renderDoc :: Doc ann -> String
 renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
@@ -64,12 +65,19 @@ translVal =
 translBinding :: Binding -> Doc ann
 translBinding (Binding n v) = pretty "const" <+> pretty n <+> pretty "=" <+> translVal v
 
+translConstant :: C.Constant -> Doc ann
+translConstant = \case
+                  (C.Integer i) -> pretty (show i)
+                  (C.String s) -> parens (pretty $ show s)
+                  (C.Boolean b) -> pretty (if b then "true" else "false")
+                  C.Unit -> pretty "0"
+
 translExpr :: Expr -> Doc ann
 translExpr =
   \case
     (Apply f xs) -> pretty f <> parens (sepMapBy comma pretty xs)
     (Switch n ix es fallback) ->
-      let aux (i, e) = pretty "case" <+> pretty i <> pretty ": " <> translExpr e <> pretty "; break"
+      let aux (i, e) = pretty "case" <+> translConstant i <> pretty ": " <> translExpr e <> pretty "; break"
        in pretty "switch"
             <+> parens (pretty "Number" <> parens (pretty n))
             <> braces
