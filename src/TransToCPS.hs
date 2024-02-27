@@ -18,6 +18,11 @@ transl :: L.Expr -> CurrentContinue -> (Name -> CurrentContinue -> CompEnv Term)
 transl expression currentFuncK kont =
   case expression of
     (L.Var n) -> kont n currentFuncK
+    (L.Let x (L.Abs y e1) e2) ->
+      do
+        k <- uniqueName "k"
+        func <- Fn k Nothing [y] <$> transl e1 k (\e' _ -> pure $ Continue k Nothing e')
+        LetVal x func <$> transl e2 currentFuncK kont
     (L.Abs x e) ->
       do
         f <- uniqueName "f"

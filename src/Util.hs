@@ -32,6 +32,14 @@ bound e = nub $ concatMap f (universe e)
 occur :: Term -> [Name]
 occur = nub . toListOf var
 
+
+occurCount :: Term -> Map.Map Name Int
+occurCount t = f Map.empty (toListOf var t)
+  where
+    f count = \case
+      (x : xs) -> f (Map.alter (Just . (+ 1) . fromMaybe (-1)) x count) xs
+      [] -> count
+
 free :: Term -> [Name]
 free e = occur e \\ bound e
 

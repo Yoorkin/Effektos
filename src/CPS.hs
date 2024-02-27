@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE LambdaCase #-}
 
 module CPS where
 
@@ -77,20 +78,44 @@ instance Pretty Value where
   pretty (Fn k env x t) = group (parens $ pretty "Fun" <+> pretty k <+> braces (pretty env) <+> pretty x <+> pretty "->" <> nested (line <> pretty t))
 
 instance Pretty Term where
-  pretty (LetVal n (Fn k env xs e1) e2) =
+  pretty = term2doc []
+
+sepMapBy :: Doc ann -> (a -> Doc ann) -> [a] -> Doc ann
+sepMapBy sep' f xs = concatWith (\a b -> a <> sep' <> b) (map f xs)
+
+term2doc :: [Doc ann] -> Term -> Doc ann
+term2doc bindings = \case
+  (LetVal n (Fn k env xs e1) e2) ->
     let funDoc =
           pretty "Fun"
             <+> pretty n
-            <> parens
-              ( pretty k
-                  <+> braces (pretty env)
-                  <+> pretty xs
+            <> parenList2doc
+              ( [ pretty k,
+                  closure2doc env
+                ]
+                  ++ map pretty xs
               )
             <+> pretty "->"
             <> nested (line <> pretty e1)
-     in group
-          (pretty e2 <> line <> pretty "where" <> nested (line <> funDoc))
-  pretty (LetVal n v t) =
+     in term2doc (funDoc : bindings) e2
+  (LetCont k env x c t) ->
+    let contDoc =
+          group
+            ( pretty "Cont"
+                <+> ( pretty k
+                        <> parenList2doc
+                          [ closure2doc env,
+                               pretty x
+                          ]
+                        <+> pretty "="
+                        <> nested
+                          ( line
+                              <> pretty c
+                          )
+                    )
+            )
+     in term2doc (contDoc : bindings) t
+  (LetVal n v t) ->
     group
       ( pretty
           "let"
@@ -102,8 +127,8 @@ instance Pretty Term where
             )
             </> pretty "in"
       )
-      </> pretty t
-  pretty (LetSel n i n' t) =
+      </> term2doc bindings t
+  (LetSel n i n' t) ->
     pretty "let"
       <+> pretty n
       <+> group
@@ -114,28 +139,8 @@ instance Pretty Term where
             )
             </> pretty "in"
         )
-        </> pretty t
-  pretty (LetCont k env x c t) =
-    let contDoc =
-          group $
-            pretty "Cont"
-              <+> ( pretty k
-                      <> parens
-                        ( braces (pretty env)
-                            <+> pretty x
-                        )
-                      <+> pretty "="
-                      <> nested
-                        ( line
-                            <> pretty c
-                        )
-                  )
-     in pretty t
-          </> pretty "where"
-          <> nested (line <> contDoc)
-  pretty (Continue k env x) = group (pretty "Continue" <+> pretty k <+> braces (pretty env) <+> pretty x)
-  pretty (Apply f k env x) = group (pretty f <+> pretty k <+> braces (pretty env) <+> pretty x)
-  pretty (LetPrim n op ns t) =
+        </> term2doc bindings t
+  (LetPrim n op ns t) ->
     group
       ( pretty
           "let"
@@ -155,20 +160,39 @@ instance Pretty Term where
             )
             </> pretty "in"
       )
-      </> pretty t
-  pretty (Halt e) = group (pretty "halt" </> pretty e)
-  pretty (Handle e hdls) = group (pretty "handle" <> nested (line <> pretty e) </> pretty "with" <> nested (line <> pretty hdls))
-  pretty (Raise h k xs) = group (pretty "Raise" <+> pretty h <+> pretty k <+> pretty xs)
-  pretty (LetFns fns l) = group (pretty "Letrec" <> nest 2 (line <> concatWith (</>) (map g fns)) </> pretty "in" </> pretty l)
+      </> term2doc bindings t
+  (LetFns fns l) -> group (pretty "Letrec" <> nest 2 (line <> concatWith (</>) (map g fns)) </> pretty "in" </> pretty l)
     where
       g (n, v) = group (pretty n <+> pretty "=" <+> pretty v)
-  pretty (Switch n ix ks) =
+  (Switch n ix ks) ->
     pretty "switch"
       <+> pretty n
       <> colon
       <> nested (hardline <> sepMapBy hardline f (zip ix ks))
+      <> bindings2doc bindings
     where
       f (i, e) = pretty (show i) <+> pretty "->" <+> align (pretty e)
-
-sepMapBy :: Doc ann -> (a -> Doc ann) -> [a] -> Doc ann
-sepMapBy sep' f xs = concatWith (\a b -> a <> sep' <> b) (map f xs)
+  (Halt e) ->
+    group (pretty "halt" </> pretty e)
+  -- <> line
+  -- <> bindings2doc bindings
+  (Handle e hdls) ->
+    group (pretty "handle" <> nested (line <> pretty e) </> pretty "with" <> nested (line <> pretty hdls))
+  -- <> line
+  -- <> bindings2doc bindings
+  (Raise h k xs) ->
+    group (pretty "Raise" <+> pretty h <+> pretty k <+> pretty xs)
+  -- <> line
+  -- <> bindings2doc bindings
+  (Continue k env x) ->
+    group (pretty "continue" <+> pretty k <+> parenList2doc [closure2doc env, pretty x])
+      <> bindings2doc bindings
+  (Apply f k env xs) ->
+    group (pretty "call" <+> pretty f <+> parenList2doc ([pretty k, closure2doc env] ++ map pretty xs))
+      <> bindings2doc bindings
+ where
+    bindings2doc [] = mempty
+    bindings2doc bindings = group (hardline <> pretty "where" <> nest 2 (line <> vsep bindings))
+    closure2doc Nothing = pretty "()"
+    closure2doc (Just x) = pretty x
+    parenList2doc xs = parens (concatWith (\a b -> a <> comma <+> b) xs)

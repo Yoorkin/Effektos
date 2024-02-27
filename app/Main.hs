@@ -74,7 +74,7 @@ pipeline options = do
   lambda <- hoistIO (SyntaxToLambda.transProg syntax)
   when (debug_lambda options) $ do
     lift $ putStrLn "=========== Lambda ================"
-    lift $ pPrint lambda
+    lift $ print lambda
   lambda <- hoistIO (Uniquify.uniquifyTerm lambda)
   when (debug_uniquify options) $ do
     lift $ putStrLn "=========== Uniquified ================"
