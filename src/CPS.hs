@@ -2,15 +2,14 @@
 
 module CPS where
 
+import CompileEnv
+import qualified Constant as C
 import Control.Lens.Plated
 import Data.Data
 import Data.Data.Lens
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Primitive
-import CompileEnv
-import qualified Constant as C
-
 
 data Value
   = Var Name
@@ -22,9 +21,13 @@ data Value
   deriving (Eq, Ord, Read, Data)
 
 type Effect = String
+
 type Cont = Name
+
 type Function = Name
+
 type Argument = Name
+
 type Closure = Name
 
 data Term
@@ -74,10 +77,23 @@ instance Pretty Value where
   pretty (Fn k env x t) = group (parens $ pretty "Fun" <+> pretty k <+> braces (pretty env) <+> pretty x <+> pretty "->" <> nested (line <> pretty t))
 
 instance Pretty Term where
+  pretty (LetVal n (Fn k env xs e1) e2) =
+    let funDoc =
+          pretty "Fun"
+            <+> pretty n
+            <> parens
+              ( pretty k
+                  <+> braces (pretty env)
+                  <+> pretty xs
+              )
+            <+> pretty "->"
+            <> nested (line <> pretty e1)
+     in group
+          (pretty e2 <> line <> pretty "where" <> nested (line <> funDoc))
   pretty (LetVal n v t) =
     group
       ( pretty
-          "Letval"
+          "let"
           <> nested
             ( line
                 <> pretty n
@@ -88,41 +104,41 @@ instance Pretty Term where
       )
       </> pretty t
   pretty (LetSel n i n' t) =
-    pretty "Letsel"
+    pretty "let"
       <+> pretty n
       <+> group
         ( nested
             ( pretty "="
-                </> ( pretty "select"
-                        <+> pretty i
-                        <+> pretty n'
+                </> ( pretty n' <> brackets (pretty i)
                     )
             )
             </> pretty "in"
         )
         </> pretty t
   pretty (LetCont k env x c t) =
-    group $
-      pretty "Letcont"
-        <> nested
-          ( softline
-              <> pretty k
-              <+> braces (pretty env)
-              <+> pretty x
-              <+> pretty "="
-              <> nested
-                ( line
-                    <> pretty c
-                )
-          )
-          </> pretty "in"
-          </> pretty t
+    let contDoc =
+          group $
+            pretty "Cont"
+              <+> ( pretty k
+                      <> parens
+                        ( braces (pretty env)
+                            <+> pretty x
+                        )
+                      <+> pretty "="
+                      <> nested
+                        ( line
+                            <> pretty c
+                        )
+                  )
+     in pretty t
+          </> pretty "where"
+          <> nested (line <> contDoc)
   pretty (Continue k env x) = group (pretty "Continue" <+> pretty k <+> braces (pretty env) <+> pretty x)
   pretty (Apply f k env x) = group (pretty f <+> pretty k <+> braces (pretty env) <+> pretty x)
   pretty (LetPrim n op ns t) =
     group
       ( pretty
-          "Letprim"
+          "let"
           <> nested
             ( line
                 <> pretty n
