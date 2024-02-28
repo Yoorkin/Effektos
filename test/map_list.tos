@@ -1,0 +1,19 @@
+
+data List = Nil | Cons Int List 
+
+let ls = Cons 1 (Cons 2 (Cons 3 (Cons 4 Nil))) in
+let print = fun x -> (extern "console.log" x) in
+let rec show = fun xs -> 
+    case xs of
+    | (Cons x xs) -> print x; show xs
+    | Nil -> ()
+in
+let rec map = fun f -> fun xs -> 
+    case xs of 
+    | (Cons x xs) -> Cons (f x) (map f xs)
+    | Nil -> Nil
+in
+print (map (fun x -> x + x) ls)
+
+
+
