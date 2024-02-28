@@ -31,6 +31,7 @@ library
       CompileEnv
       Constant
       CPS
+      CPSPrinter
       DefinitionInfo
       Flat
       Flatvm

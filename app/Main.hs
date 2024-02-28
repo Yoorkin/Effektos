@@ -16,6 +16,7 @@ import Text.Pretty.Simple (pPrint)
 import TransToCPS
 import TransToJS
 import Uniquify (uniquifyTerm)
+import qualified CPSPrinter
 
 data Effektos = Compile
   { files :: [FilePath],
@@ -82,20 +83,20 @@ pipeline options = do
   cps <- hoistIO (TransToCPS.translate lambda)
   when (debug_cps options) $ do
     lift $ putStrLn "=========== CPS ================"
-    lift $ print cps
+    lift $ putStrLn (CPSPrinter.prettyCPS cps)
   cps <-
     if optimize options
       then do
         r <- hoistIO (Simp.simplify cps)
         when (debug_simplify options) $ do
           lift $ putStrLn "=========== Simplified CPS ================"
-          lift $ print r
+          lift $ putStrLn (CPSPrinter.prettyCPS r)
         pure r
       else pure cps
   clo <- hoistIO (ClosureConversion.translClosure cps)
   when (debug_closure_conversion options) $ do
     lift $ putStrLn "=========== Closure Passing Style ================"
-    lift $ print clo
+    lift $ putStrLn (CPSPrinter.prettyCPS clo)
   flat <- hoistIO (HoistToFlat.hoistToFlat clo)
   when (debug_flat options) $ do
     lift $ putStrLn "=========== Flat ================"
