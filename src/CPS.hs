@@ -8,6 +8,8 @@ import qualified Constant as C
 import Control.Lens.Plated
 import Data.Data
 import Data.Data.Lens
+import Data.Map.Lazy (Map)
+import qualified Data.Map.Lazy as Map
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Primitive
@@ -78,12 +80,12 @@ instance Pretty Value where
   pretty (Fn k env x t) = group (parens $ pretty "Fun" <+> pretty k <+> braces (pretty env) <+> pretty x <+> pretty "->" <> nested (line <> pretty t))
 
 instance Pretty Term where
-  pretty = term2doc []
+  pretty = term2doc Map.empty
 
 sepMapBy :: Doc ann -> (a -> Doc ann) -> [a] -> Doc ann
 sepMapBy sep' f xs = concatWith (\a b -> a <> sep' <> b) (map f xs)
 
-term2doc :: [Doc ann] -> Term -> Doc ann
+term2doc :: Map Name (Doc ann) -> Term -> Doc ann
 term2doc bindings = \case
   (LetVal n (Fn k env xs e1) e2) ->
     let funDoc =
@@ -97,7 +99,7 @@ term2doc bindings = \case
               )
             <+> pretty "->"
             <> nested (line <> pretty e1)
-     in term2doc (funDoc : bindings) e2
+     in term2doc (Map.insert k funDoc bindings) e2
   (LetCont k env x c t) ->
     let contDoc =
           group
@@ -105,7 +107,7 @@ term2doc bindings = \case
                 <+> ( pretty k
                         <> parenList2doc
                           [ closure2doc env,
-                               pretty x
+                            pretty x
                           ]
                         <+> pretty "="
                         <> nested
@@ -114,7 +116,7 @@ term2doc bindings = \case
                           )
                     )
             )
-     in term2doc (contDoc : bindings) t
+     in term2doc (Map.insert k contDoc bindings) t
   (LetVal n v t) ->
     group
       ( pretty
@@ -169,7 +171,7 @@ term2doc bindings = \case
       <+> pretty n
       <> colon
       <> nested (hardline <> sepMapBy hardline f (zip ix ks))
-      <> bindings2doc bindings
+      <> bindings2doc (Map.elems bindings)
     where
       f (i, e) = pretty (show i) <+> pretty "->" <+> align (pretty e)
   (Halt e) ->
@@ -184,13 +186,13 @@ term2doc bindings = \case
     group (pretty "Raise" <+> pretty h <+> pretty k <+> pretty xs)
   -- <> line
   -- <> bindings2doc bindings
-  (Continue k env x) ->
+  (Continue k env x)  ->
     group (pretty "continue" <+> pretty k <+> parenList2doc [closure2doc env, pretty x])
-      <> bindings2doc bindings
+      <> bindings2doc (Map.elems bindings)
   (Apply f k env xs) ->
     group (pretty "call" <+> pretty f <+> parenList2doc ([pretty k, closure2doc env] ++ map pretty xs))
-      <> bindings2doc bindings
- where
+      <> bindings2doc (Map.elems bindings)
+  where
     bindings2doc [] = mempty
     bindings2doc bindings = group (hardline <> pretty "where" <> nest 2 (line <> vsep bindings))
     closure2doc Nothing = pretty "()"
