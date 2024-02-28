@@ -117,6 +117,8 @@ simp census env s p =
             else
               let ns' = map (applySubst s) ns
                in case (op, mapM (lookup env) ns') of
+                    (Primitive.EQ, Just [I32 a, I32 b]) ->
+                      let v = if a == b then I32 1 else I32 0 in LetVal n v <$> simp census (addEnv env n v) s t
                     (Add2, Just [I32 a, I32 b]) ->
                       let v = I32 $ a + b in LetVal n v <$> simp census (addEnv env n v) s t
                     _ -> LetPrim n op ns' <$> fallback
