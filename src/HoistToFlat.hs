@@ -1,10 +1,10 @@
 {-# LANGUAGE LambdaCase #-}
 
-module HoistToFlat(hoistToFlat) where
+module HoistToFlat (hoistToFlat) where
 
 import CPS
-import qualified Flat as F
 import CompileEnv
+import qualified Flat as F
 
 valueToFlat :: Value -> F.Value
 valueToFlat = \case
@@ -50,13 +50,18 @@ toFlat (LetPrim x op ys l) =
   let (fs, bs, e) = toFlat l
       b = F.Binding x (F.PrimOp op ys)
    in (fs, b : bs, e)
-toFlat (Switch cond index branches) =
+toFlat (Switch cond index branches fallback) =
   let g (l : ls) fs bs es =
         let (f1, b1, e1) = toFlat l
          in g ls (f1 ++ fs) (bs ++ b1) (e1 : es)
       g [] fs bs es = (reverse fs, bs, reverse es)
    in let (fs, bs, es) = g branches [] [] []
-      in (fs, bs, F.Switch cond index es Nothing)
+          (fs', bs', fb') = case fallback of
+            Nothing -> ([], [], Nothing)
+            Just fb ->
+              let (a, b, c) = toFlat fb
+               in (a, b, Just c)
+       in (fs' ++ fs, bs' ++ bs, F.Switch cond index es fb')
 toFlat (Halt n) = ([], [], F.Exit n)
 toFlat (Handle l hdls) =
   let (fs, bs, e) = toFlat l

@@ -41,7 +41,7 @@ instance Show DescisionTree where
   show tree = renderDoc (pretty tree)
 
 instance Pretty DescisionTree where
-  pretty (Success bs e) = pretty "Success" <+> pretty (show bs) <+> nest 2 (pretty $ show e)
+  pretty (Success bs e) = pretty "Success" <+> pretty (show bs) <+> align (pretty $ show e)
   pretty Fail = pretty "Fail"
   pretty (Switch occur subtrees fallback) =
     pretty "Switch"

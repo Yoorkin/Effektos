@@ -13,7 +13,8 @@ import Util (occurCount)
 import Data.Maybe (isNothing)
 
 sepBy :: Doc a -> [Doc a] -> Doc a
-sepBy s = concatWith (\x acc -> x <> s <> acc)
+sepBy s xs = case xs of [] -> mempty
+                        xs -> concatWith (\x acc -> x <> s <> acc) xs
 
 sepMap :: Doc a -> (b -> Doc a) -> [b] -> Doc a
 sepMap s f = sepBy s . map f
@@ -32,7 +33,7 @@ value2doc occurs = \case
   (Cont env n t) ->
     group
       ( pretty "Cont"
-          <> parens (sepBy (comma <> space) 
+          <> parens (sepBy (comma <> space)
             ((case env of Nothing -> []; _ -> [closure2doc env]) ++  [pretty n]))
           <+> pretty "->"
           <> nest 2 (line <> term2doc occurs Map.empty t)
@@ -127,13 +128,15 @@ term2doc occurs bindings expr =
           where
             g :: (Name, Value) -> Doc ann
             g (n, v) = group (pretty n <+> pretty "=" <+> value2doc occurs v)
-        (Switch n ix ks) ->
+        (Switch n ix ks fb) ->
           pretty "case"
             <+> pretty n
             <+> pretty "of"
-            <> nest 2 (hardline <> sepMap hardline f (zip ix ks))
+            <> nest 2 (hardline <> sepBy hardline (zipWith (curry f) ix ks ++ [fbDoc]))
             <> bindings2doc occurs bindings
           where
+            fbDoc = case fb of Nothing -> mempty
+                               Just x -> pretty "_ ->" <+> align (go x)
             f (i, e) = pretty (show i) <+> pretty "->" <+> align (go e)
         (Halt e) ->
           group (pretty "halt" <> line <> pretty e)
@@ -168,7 +171,7 @@ term2doc occurs bindings expr =
               group
                 ( pretty "continue"
                     <+> pretty k
-                    <> parens (sepBy (comma <> space) 
+                    <> parens (sepBy (comma <> space)
                      ((case env of Nothing -> []; _ -> [closure2doc env]) ++ [pretty x]))
                 )
                 <> bindings2doc occurs bindings

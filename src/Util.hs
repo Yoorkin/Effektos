@@ -64,7 +64,7 @@ used = concatMap f . universe
     f (Continue n1 env n2) = toList env ++ [n1, n2]
     f (Apply n1 n2 env ns) = toList env ++ n1 : n2 : ns
     f (LetPrim _ _ ns _) = ns
-    f (Switch n _ _) = [n]
+    f (Switch n _ _ _) = [n]
     f (Halt n) = [n]
     f (Handle _ hdls) = map snd hdls
     f (Raise _ n ns) = n:ns
@@ -94,7 +94,7 @@ var f = goExpr
       (Continue n1 mn n2) -> Continue <$> f n1 <*> traverse f mn <*> f n2
       (Apply n1 n2 env n3) -> Apply <$> f n1 <*> f n2 <*> traverse f env <*> traverse f n3
       (LetPrim n p ns t) -> LetPrim <$> f n <*> pure p <*> traverse f ns <*> goExpr t
-      (Switch n ix ts) -> Switch <$> f n <*> pure ix <*> traverse goExpr ts
+      (Switch n ix ts fb) -> Switch <$> f n <*> pure ix <*> traverse goExpr ts <*> traverse goExpr fb
       (Halt v) -> Halt <$> f v
       (Handle e hdls) -> Handle <$> goExpr e <*> traverse (\(x,y) -> (x,) <$> f y) hdls
       (Raise eff k x) -> Raise eff <$> f k <*> traverse f x

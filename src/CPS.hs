@@ -41,7 +41,7 @@ data Term
   | Continue Name (Maybe Name) Name
   | Apply Function Cont (Maybe Closure) [Argument]
   | LetPrim Name Primitive [Name] Term
-  | Switch Name [C.Constant] [Term]
+  | Switch Name [C.Constant] [Term] (Maybe Term)
   | Handle Term [(Effect, Function)]
   | Raise Effect Cont [Argument] -- h k x
   | Halt Name

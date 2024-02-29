@@ -80,8 +80,8 @@ instance Pretty Expr where
   pretty (Abs n e) = group (pretty "fun" <+> pretty n <+> pretty "->" <> nest 2 (line <> pretty e))
   pretty (Let n e1 e2) = group (pretty "let" <+> group (pretty n <+> pretty "=" <+> pretty e1 <> line <> pretty "in") <> line <> pretty e2)
   pretty (App a b) = pretty a <+> pretty b
-  pretty (Fix ns fns e) = group (pretty "let rec" <+> nest 2 (vcat (zipWith f ns fns)) <+> pretty "in" <> line <> pretty e)
-          where f n (arg,expr) = pretty "fun" <+> pretty (show arg) <+> pretty "->" <+> group (nest 2 (line <> pretty expr))
+  pretty (Fix ns fns e) = group (pretty "let rec" <+> nest 2 (vcat (zipWith f ns fns)) <> line <> pretty "in" <> line <> pretty e)
+          where f n (arg,expr) = pretty n <+> pretty "=" <+> pretty "fun" <+> pretty (show arg) <+> pretty "->" <+> group (nest 2 (line <> pretty expr))
   pretty (Const c) = pretty (show c)
   pretty (Tuple xs) = parens (concatWith (\a b -> a <> pretty "," <+> b) (map pretty xs))
   pretty (Select i e) = pretty e <> pretty "[" <> pretty i <> pretty "]"

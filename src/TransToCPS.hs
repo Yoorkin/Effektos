@@ -72,7 +72,7 @@ transl expression currentFuncK kont =
             g fs ((n, Fn k Nothing [x] e) : acc)
           g [] acc = LetFns (reverse acc) <$> transl e' currentFuncK kont
        in g (zip ns fs) []
-    (L.Switch cond cases _) -> do
+    (L.Switch cond cases fallback) -> do
       let (ix, branches) = unzip cases
       transl cond currentFuncK $ \cond' currentFuncK ->
         let f acc =
@@ -84,8 +84,17 @@ transl expression currentFuncK kont =
                   LetCont branchK Nothing branchX
                     <$> transl b currentFuncK kont
                     <*> f (LetVal c Unit (Continue branchK Nothing c) : acc) bs
-                [] -> pure $ Switch cond' ix (reverse acc)
-         in f [] branches
+                [] -> case fallback of 
+                        Nothing -> pure $ Switch cond' ix (reverse acc) Nothing
+                        Just fb -> do
+                          branchK <- uniqueName "fallback"
+                          branchX <- uniqueName "x"
+                          c <- freshStr "c"
+                          let fb' = LetVal c Unit (Continue branchK Nothing c)
+                          LetCont branchK Nothing branchX 
+                            <$> transl fb currentFuncK kont
+                            <*> pure (Switch cond' ix (reverse acc) (Just fb'))
+         in f [] branches 
 
     -- The handler function is a normal function, not a continuation
     (L.Handle (L.App func arg) hds) -> do
