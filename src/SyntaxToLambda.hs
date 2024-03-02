@@ -12,6 +12,8 @@ import DefinitionInfo
 import qualified Lambda as L
 import qualified PatternMatch
 import Syntax as S
+import qualified Data.Bifunctor
+import Data.Bifunctor (Bifunctor(first))
 
 constToInt :: Constant -> Int
 constToInt x =
@@ -33,7 +35,9 @@ preprocessDefs = aux initialDataTypes initialConstrs []
       (Map.fromList datatypes, Map.fromList constrs, Map.fromList effects)
     aux datatypes constrs effects (def : defs) =
       case def of
-        (Effect {}) -> aux datatypes constrs effects defs
+        (Effect name _) -> 
+          let eff = EffectInfo 1 in
+          aux datatypes constrs ((name, eff) : effects) defs
         (Data typename pairs) ->
           let constrs' = map (mkConstrInfo typename) pairs
               datatype = (typename, DataTypeInfo (map fst pairs))
@@ -92,9 +96,9 @@ translExpr datatypes constrs effects expr =
         (Const c) -> pure $ L.Const c
         (Sequence e1 e2) -> L.Let <$> fresh <*> go e1 <*> go e2
         Hole -> error ""
-        -- (Handle e hds) ->
-        --   let f (eff, x, k, m) = (eff,synName x,synName k,) <$> go m
-        --    in L.Handle <$> go e <*> mapM f hds
+        (Handle e hds) ->
+          let f (PatConstr eff [PatVar x, PatVar k], m) = (eff,synName x,synName k,) <$> go m
+           in L.Handle <$> go e <*> mapM (f . first (preprocessPattern constrs)) hds
         (Raise eff x) -> L.Raise eff <$> go x
         (Resume k a) -> L.Resume <$> go k <*> go a
         _ -> error $ show expr

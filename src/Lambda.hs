@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Lambda where
 
@@ -79,7 +80,7 @@ instance Pretty Expr where
   pretty (Var n) = pretty n
   pretty (Abs n e) = group (pretty "fun" <+> pretty n <+> pretty "->" <> nest 2 (line <> pretty e))
   pretty (Let n e1 e2) = group (pretty "let" <+> group (pretty n <+> pretty "=" <+> pretty e1 <> line <> pretty "in") <> line <> pretty e2)
-  pretty (App a b) = pretty a <+> pretty b
+  pretty (App a b) = parens (pretty a <+> pretty b)
   pretty (Fix ns fns e) = group (pretty "let rec" <+> nest 2 (vcat (zipWith f ns fns)) <> line <> pretty "in" <> line <> pretty e)
           where f n (arg,expr) = pretty n <+> pretty "=" <+> pretty "fun" <+> pretty (show arg) <+> pretty "->" <+> group (nest 2 (line <> pretty expr))
   pretty (Const c) = pretty (show c)
@@ -91,6 +92,14 @@ instance Pretty Expr where
           where f (c,e) = group $ pretty "|" <+> pretty (show c) <+> pretty "->" <> nest 4 (line <> pretty e)
                 g (Just e) = group $ pretty "|" <+> pretty "_" <+> pretty "->" <> nest 4 (line <> pretty e)
                 g Nothing = mempty
+  pretty (Handle e hdls) = pretty "handle" <+> pretty e <+> pretty "with" <> line <> hdls' 
+          where hdls' = hsep (map f hdls)
+                f :: (Effect, Name, Name, Expr) -> Doc ann
+                f (eff, k, x, e) = pretty "|" <+> parens (pretty eff <+> pretty k <+> pretty x) <+> pretty "->" <+> nest 2 (pretty e)
+  pretty (Raise eff e) = pretty "raise" <+> pretty eff <+> pretty e
+
+
+
 
 renderDoc :: Doc ann -> String
 renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})

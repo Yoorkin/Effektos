@@ -28,10 +28,10 @@ toFlat (LetSel x i y k) =
   let (fs, bs, e) = toFlat k
       b = F.Binding x (F.Proj i y)
    in (fs, b : bs, e)
-toFlat (LetCont k (Just env) x l m) =
+toFlat (LetCont k x l m) =
   let (fs1, bs1, e1) = toFlat l
       (fs2, bs2, e2) = toFlat m
-      fk = F.Fn k [env, x] bs1 e1
+      fk = F.Fn k [x] bs1 e1
    in (fs1 ++ fs2 ++ [fk], bs2, e2)
 toFlat (LetFns fns l) =
   let g ((n, Fn k (Just env) xs m) : remains) acc =
@@ -42,8 +42,8 @@ toFlat (LetFns fns l) =
       g _ _ = error ""
       (f2, b2, e2) = toFlat l
    in (f2 ++ g fns [], b2, e2)
-toFlat (Continue k (Just env) x) =
-  ([], [], F.Apply k [env, x])
+toFlat (Continue k x) =
+  ([], [], F.Apply k [x])
 toFlat (Apply f k (Just env) xs) =
   ([], [], F.Apply f (env : k : xs))
 toFlat (LetPrim x op ys l) =

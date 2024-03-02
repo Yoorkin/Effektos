@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module CPSPrinter where
 
@@ -10,11 +11,11 @@ import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Primitive ()
 import Util (occurCount)
-import Data.Maybe (isNothing)
 
 sepBy :: Doc a -> [Doc a] -> Doc a
-sepBy s xs = case xs of [] -> mempty
-                        xs -> concatWith (\x acc -> x <> s <> acc) xs
+sepBy s xs = case xs of
+  [] -> mempty
+  _ -> concatWith (\x acc -> x <> s <> acc) xs
 
 sepMap :: Doc a -> (b -> Doc a) -> [b] -> Doc a
 sepMap s f = sepBy s . map f
@@ -30,11 +31,14 @@ value2doc occurs = \case
   (I32 i) -> pretty i
   CPS.Unit -> pretty "()"
   (Tuple xs) -> parens (sepMap (comma <> space) pretty xs)
-  (Cont env n t) ->
+  (Cont n t) ->
     group
       ( pretty "Cont"
-          <> parens (sepBy (comma <> space)
-            ((case env of Nothing -> []; _ -> [closure2doc env]) ++  [pretty n]))
+          <> parens
+            ( sepBy
+                (comma <> space)
+                [pretty n]
+            )
           <+> pretty "->"
           <> nest 2 (line <> term2doc occurs Map.empty t)
       )
@@ -56,8 +60,8 @@ term2doc occurs bindings expr =
    in case expr of
         (LetVal n fn@(Fn {}) e2) ->
           term2doc occurs (Map.insert n fn bindings) e2
-        (LetCont k env x c t) ->
-          let cont = Cont env x c
+        (LetCont k x c t) ->
+          let cont = Cont x c
            in term2doc occurs (Map.insert k cont bindings) t
         (LetVal n v t) ->
           group
@@ -119,7 +123,7 @@ term2doc occurs bindings expr =
         (LetFns fns l) ->
           group
             ( pretty "Letrec"
-                <> nest 2 (line <> concatWith (\a b -> a <> line <> b) (map g fns))
+                <> nest 2 (line <> concatWith (\a b -> a <> line <> line <> b) (map g fns))
                 <> line
                 <> pretty "in"
                 <> line
@@ -132,12 +136,13 @@ term2doc occurs bindings expr =
           pretty "case"
             <+> pretty n
             <+> pretty "of"
-            <> nest 2 (hardline <> sepBy hardline (zipWith (curry f) ix ks ++ [fbDoc]))
+            <> nest 2 (hardline <> sepBy hardline (zipWith (curry f) ix ks ++ fbDoc))
             <> bindings2doc occurs bindings
           where
-            fbDoc = case fb of Nothing -> mempty
-                               Just x -> pretty "_ ->" <+> align (go x)
-            f (i, e) = pretty (show i) <+> pretty "->" <+> align (go e)
+            fbDoc = case fb of
+              Nothing -> []
+              Just x -> [pretty "_ ->" <+> nest 2 (hardline <> go x)]
+            f (i, e) = pretty (show i) <+> pretty "->" <+> nest 2 (hardline <> go e)
         (Halt e) ->
           group (pretty "halt" <> line <> pretty e)
             <> bindings2doc occurs bindings
@@ -149,42 +154,45 @@ term2doc occurs bindings expr =
                 <> pretty "with"
                 <> nest 2 (line <> pretty hdls)
             )
-        -- <> line
-        -- <> bindings2doc bindings
+          <> bindings2doc occurs bindings
         (Raise h k xs) ->
           group (pretty "Raise" <+> pretty h <+> pretty k <+> pretty xs)
         -- <> line
         -- <> bindings2doc bindings
-        (Continue k env x) ->
+        (Continue k x) ->
           case (Map.lookup k occurs, Map.lookup k bindings) of
-            (Just 2, Just (Cont env' x' t)) ->
-              group
-                ( pretty "let*"
-                    <+> (case env' of Nothing -> pretty x'; _ -> parens (closure2doc env' <> comma <+> pretty x'))
-                    <+> pretty "="
-                    <+> (case env of Nothing -> pretty x; _ -> parens (closure2doc env <> comma <+> pretty x))
-                    <+> pretty "in"
-                    <> line
-                    <> term2doc occurs (Map.delete k bindings) t
-                )
+            -- (Just 2, Just (Cont x' t)) ->
+            --   group
+            --     (
+            --       pretty "continue"
+            --         <+> parens (pretty x)
+            --         <+> pretty "$" <+> pretty "Cont" <+> pretty k
+            --         <> parens (pretty x')
+            --         <+> pretty "->"
+            --         <> line
+            --         <> term2doc occurs (Map.delete k bindings) t
+            --     )
             _ ->
               group
                 ( pretty "continue"
                     <+> pretty k
-                    <> parens (sepBy (comma <> space)
-                     ((case env of Nothing -> []; _ -> [closure2doc env]) ++ [pretty x]))
+                    <> parens
+                      ( sepBy
+                          (comma <> space)
+                          [pretty x]
+                      )
                 )
                 <> bindings2doc occurs bindings
         (Apply f k env xs) ->
           case (Map.lookup k occurs, Map.lookup k bindings) of
-            (Just 2, Just (Cont env' x' t)) ->
-              pretty "let*"
-                <+> (case env' of Nothing -> pretty x'; _ -> parens (closure2doc env' <> comma <+> pretty x'))
-                <+> pretty "="
-                <+> pretty f
-                <> parens (sepBy (comma <> space) ((if isNothing env then [] else [closure2doc env]) ++ map pretty xs))
-                <> line
-                <> term2doc occurs (Map.delete k bindings) t
+            -- (Just 2, Just (Cont x' t)) ->
+            --   pretty "" <> pretty f
+            --     <+> sepBy (comma <> space) (map pretty xs)
+            --     <+> pretty "$" <+> pretty "Cont" <+> pretty k
+            --     <> parens (parens (pretty x'))
+            --     <+> pretty "->"
+            --     <> line
+            --     <> term2doc occurs (Map.delete k bindings) t
             _ ->
               group
                 ( pretty "call"
@@ -194,9 +202,20 @@ term2doc occurs bindings expr =
                 <> bindings2doc occurs bindings
 
 bindings2doc :: Map.Map Name Int -> Map.Map Name Value -> Doc ann
-bindings2doc occurs bindings = if Map.null bindings then mempty else group (hardline <> pretty "where" <> nest 2 (line <> vsep (map f (Map.toList bindings))))
+bindings2doc occurs bindingMap =
+  let contsDoc = if conts /= [] then line <> sepBy hardline (map cont2doc conts) else mempty
+      fnsDoc = if fns /= [] then line <> pretty "where" <> nest 2 (line <> hsep (map fn2doc fns)) else mempty
+   in contsDoc <> fnsDoc
   where
-    f (n, v) = group (pretty n <+> pretty "=" <+> value2doc occurs v)
+    fn2doc (n, v) = group (pretty n <+> pretty "=" <+> value2doc occurs v)
+    cont2doc (n, Cont x t) = pretty "----" <> pretty n <> parens (pretty x) <> pretty ":" <> line <> term2doc Map.empty Map.empty t
+    isCont = \case
+      (_, Cont {}) -> True
+      _ -> False
+    isFn = not . isCont
+    bindings = Map.toList bindingMap
+    conts = filter isCont bindings
+    fns = filter isFn bindings
 
 renderDoc :: Doc ann -> String
 renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})

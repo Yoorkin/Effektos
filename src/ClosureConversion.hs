@@ -107,19 +107,21 @@ transl (Raise effect k args) =
 --     in
 --     let k = (code, fvar ...)
 --     in m[k x |-> let k' = select 0 k in k' k x]
-transl (LetCont k Nothing x l m) = do
-  let fvars = free l \\ [k, x]
-  nfvars <- mapM uniName fvars
-  code <- freshStr ("code_" ++ baseStr k)
-  env <- freshStr "env"
-  l' <- wrapProj 1 env nfvars <$> (renames fvars nfvars <$> transl l)
-  m' <- transl m
-  pure $
-    LetCont code (Just env) x l' (LetVal k (Tuple (code : fvars)) m')
-transl (Continue k Nothing x) = do
-  let env = k
-  kname <- freshStr "k"
-  pure $ LetSel kname 0 env (Continue kname (Just env) x)
+-- transl (LetCont k Nothing x l m) = do
+--   let fvars = free l \\ [k, x]
+--   nfvars <- mapM uniName fvars
+--   code <- freshStr ("code_" ++ baseStr k)
+--   env <- freshStr "env"
+--   l' <- wrapProj 1 env nfvars <$> (renames fvars nfvars <$> transl l)
+--   m' <- transl m
+--   pure $
+--     LetCont code (Just env) x l' (LetVal k (Tuple (code : fvars)) m')
+-- transl (Continue k Nothing x) = do
+--   let env = k
+--   kname <- freshStr "k"
+--   pure $ LetSel kname 0 env (Continue kname (Just env) x)
+transl (LetCont k x l m) = LetCont k x <$> transl l <*> transl m
+transl (Continue k x) = pure $ Continue k x
 transl (LetVal n1 v l) = LetVal n1 v <$> transl l
 transl (LetSel n1 i n2 l) = LetSel n1 i n2 <$> transl l
 transl (LetPrim n1 p ns l) = LetPrim n1 p ns <$> transl l

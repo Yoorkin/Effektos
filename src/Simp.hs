@@ -44,7 +44,7 @@ simpVal :: Census -> Env -> Subst -> Value -> CompEnv Value
 simpVal census env s v = case v of
   Var n -> pure $ Var (applySubst s n)
   Tuple ns -> pure $ Tuple (map (applySubst s) ns)
-  Cont n mn l -> Cont n mn <$> simp census env s l
+  Cont n l -> Cont n <$> simp census env s l
   Fn k _ x l -> Fn k Nothing x <$> simp census env s l
   _ -> pure v
 
@@ -84,23 +84,23 @@ simp census env s p =
        in case lookup env y' of
             Just (Tuple elems) -> simp census env (extendSubst s x (elems !! i)) l
             _ -> LetSel x i y' <$> simp census env s l
-    LetCont k _ x l m -> do
+    LetCont k x l m -> do
       l' <- simp census env s l
       case count census k of
         0 -> simp census env s m
         -- 1 -> simp census (addEnv env k (Cont x l')) s m
-        _ -> LetCont k Nothing x l' <$> simp census (addEnv env k (Cont Nothing x l')) s m
+        _ -> LetCont k x l' <$> simp census (addEnv env k (Cont x l')) s m
     LetFns fns m -> do
       fns' <- mapM (\(x, b) -> (x,) <$> simpVal census env s b) fns
       m' <- simp census env s m
       pure $ LetFns fns' m'
-    Continue k _ x ->
+    Continue k x ->
       -- traceSimp p $
       let x' = applySubst s x
        in let k' = applySubst s k
            in case lookup env k' of
-                Just (Cont _ y l) -> inst l >>= simp census env (extendSubst s y x')
-                _ -> pure $ Continue k' Nothing x'
+                Just (Cont y l) -> inst l >>= simp census env (extendSubst s y x')
+                _ -> pure $ Continue k' x'
     Apply f k _ xs ->
       -- traceSimp p $
       let f' = applySubst s f

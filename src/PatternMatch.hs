@@ -190,10 +190,10 @@ treeToExpr kont baseMap tree =
     wrapBindings baseMap ((binder, occur) : binding) expr =
          case occur of 
            (Inside i baseOccur) | Just base <- Map.lookup baseOccur baseMap -> do
-              binder' <- freshStr binder
+              let binder' = synName binder
               wrapBindings (Map.insert occur binder' baseMap) binding (L.Let binder' (L.Select i (L.Var base)) expr)
            Itself | Just name <- Map.lookup Itself baseMap -> do
-              binder' <- freshStr binder
+              let binder' = synName binder
               wrapBindings baseMap binding (L.Let binder' (L.Var name) expr)
            _ -> error $ "base occur " ++ show occur ++ " not found"
 

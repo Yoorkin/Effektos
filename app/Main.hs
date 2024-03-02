@@ -17,6 +17,7 @@ import TransToCPS
 import TransToJS
 import Uniquify (uniquifyTerm)
 import qualified CPSPrinter
+import CPS (hoisting)
 
 data Effektos = Compile
   { files :: [FilePath],
@@ -97,6 +98,10 @@ pipeline options = do
   when (debug_closure_conversion options) $ do
     lift $ putStrLn "=========== Closure Passing Style ================"
     lift $ putStrLn (CPSPrinter.prettyCPS clo)
+  let hoisted = hoisting clo
+  lift $ putStrLn "=========== Hosting ================"
+  lift $ print clo
+  lift $ putStrLn (CPSPrinter.prettyCPS hoisted)
   flat <- hoistIO (HoistToFlat.hoistToFlat clo)
   when (debug_flat options) $ do
     lift $ putStrLn "=========== Flat ================"
