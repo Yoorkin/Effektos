@@ -132,6 +132,18 @@ term2doc occurs bindings expr =
           where
             g :: (Name, Value) -> Doc ann
             g (n, v) = group (pretty n <+> pretty "=" <+> value2doc occurs v)
+        (LetConts conts l) ->
+          group
+            ( pretty "Letconts"
+                <> nest 2 (line <> concatWith (\a b -> a <> line <> b) (map g conts))
+                <> line
+                <> pretty "in"
+                <> line
+                <> go l
+            )
+          where
+            g :: (Name, Value) -> Doc ann
+            g (n, v) = group (pretty n <+> pretty "=" <+> value2doc occurs v)
         (Switch n ix ks fb) ->
           pretty "case"
             <+> pretty n

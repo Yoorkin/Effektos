@@ -61,6 +61,7 @@ used = concatMap f . universe
     f (LetSel _ _ n _) = [n]
     f (LetCont {}) = []
     f (LetFns {}) = []
+    f (LetConts {}) = []
     f (Continue n1 n2) = [n1, n2]
     f (Apply n1 n2 env ns) = toList env ++ n1 : n2 : ns
     f (LetPrim _ _ ns _) = ns
@@ -91,6 +92,7 @@ var f = goExpr
       (LetSel n i n2 t) -> LetSel <$> f n <*> pure i <*> f n2 <*> goExpr t
       (LetCont n1 n2 t1 t2) -> LetCont <$> f n1 <*> f n2 <*> goExpr t1 <*> goExpr t2
       (LetFns fns t1) -> LetFns <$> traverse (\(a, b) -> (,) <$> f a <*> goValue b) fns <*> goExpr t1
+      (LetConts conts t1) -> LetFns <$> traverse (\(a, b) -> (,) <$> f a <*> goValue b) conts <*> goExpr t1
       (Continue n1 n2) -> Continue <$> f n1 <*> f n2
       (Apply n1 n2 env n3) -> Apply <$> f n1 <*> f n2 <*> traverse f env <*> traverse f n3
       (LetPrim n p ns t) -> LetPrim <$> f n <*> pure p <*> traverse f ns <*> goExpr t

@@ -18,6 +18,7 @@ import TransToJS
 import Uniquify (uniquifyTerm)
 import qualified CPSPrinter
 import CPS (hoisting)
+import qualified CPSToCMM
 
 data Effektos = Compile
   { files :: [FilePath],
@@ -102,6 +103,9 @@ pipeline options = do
   lift $ putStrLn "=========== Hosting ================"
   lift $ print clo
   lift $ putStrLn (CPSPrinter.prettyCPS hoisted)
+  cmm <- hoistIO (CPSToCMM.translate hoisted)
+  lift $ putStrLn "=========== CMM ================"
+  lift $ putStrLn (show cmm)
   flat <- hoistIO (HoistToFlat.hoistToFlat clo)
   when (debug_flat options) $ do
     lift $ putStrLn "=========== Flat ================"
