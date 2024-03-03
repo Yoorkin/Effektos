@@ -51,6 +51,8 @@ Here are some features currently in progress:
   Inlining, constant folding and more.
 
 - Javascript Backend
+
+- C Backend
    
 
 And some task plan to do in future:
