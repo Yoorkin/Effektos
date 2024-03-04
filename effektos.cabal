@@ -28,10 +28,13 @@ source-repository head
 library
   exposed-modules:
       ClosureConversion
+      CMM
       CompileEnv
       Constant
       CPS
       CPSPrinter
+      CPSToCMM
+      CPSToRTL
       DefinitionInfo
       Flat
       Flatvm
@@ -43,6 +46,7 @@ library
       ParseUtils
       PatternMatch
       Primitive
+      RTL
       Sexp
       Simp
       Syntax

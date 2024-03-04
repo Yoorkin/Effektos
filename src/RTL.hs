@@ -1,27 +1,41 @@
 module RTL where
 
-data Program
-  = Program [Fn]
+import CompileEnv
 
-data Fn = Fn String [BasicBlock] 
+data Program = Program [Fn] [BasicBlock] deriving Show
+
+data Fn = Fn Label [BasicBlock] deriving Show
+
+type Label = String
 
 data BasicBlock 
-  = Entry [Inst] 
-  | Labeled String [Inst]
-  deriving Show
+  = BasicBlock Label [Inst]
+  deriving (Show)
 
-type Reg = String
+
+data Operand
+  = Reg Int
+  | RLK
+  | Val Int
+  | Label Label 
+  | I64 Integer
+  | Unit
+  deriving (Show)
 
 data BinOp = Add2 | Sub2 | EQ deriving Show
 
 data UryOp = Add1 | Sub1 deriving Show
 
 data Inst
-  = Binary Reg BinOp Reg Reg
-  | Unary Reg UryOp Reg
-  | Move Reg Reg
-  | Goto Reg
-  | JEQ Reg Reg Reg 
+  = Binary Operand BinOp Operand Operand
+  | Unary Operand UryOp Operand
+  | Move Operand Operand
+  | Load Operand Operand Operand -- dst src ofs
+  | Store Operand Operand Operand -- dst val ofs
+  | Goto Operand
+  | Jif Operand Operand Operand 
+  | Call String 
+  | Ret 
   deriving (Show)
   
 
