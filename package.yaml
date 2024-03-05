@@ -37,6 +37,7 @@ dependencies:
 - mmorph
 - raw-strings-qq
 - cmdargs
+- extra
 
 ghc-options:
 - -Wall

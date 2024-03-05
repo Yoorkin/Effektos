@@ -69,6 +69,7 @@ library
     , cmdargs
     , comonad
     , containers >=0.6.7
+    , extra
     , lens
     , mmorph
     , mtl >=2.3.1
@@ -97,6 +98,7 @@ executable effektos
     , comonad
     , containers >=0.6.7
     , effektos
+    , extra
     , lens
     , mmorph
     , mtl >=2.3.1
@@ -126,6 +128,7 @@ test-suite cpsLab-test
     , comonad
     , containers >=0.6.7
     , effektos
+    , extra
     , lens
     , mmorph
     , mtl >=2.3.1

@@ -19,6 +19,7 @@ import Uniquify (uniquifyTerm)
 import qualified CPSPrinter
 import CPS (hoisting)
 import qualified CPSToCMM
+import qualified CPSToRTL
 
 data Effektos = Compile
   { files :: [FilePath],
@@ -32,7 +33,9 @@ data Effektos = Compile
     debug_simplify :: Bool,
     debug_closure_conversion :: Bool,
     debug_flat :: Bool,
-    debug_js :: Bool
+    debug_js :: Bool,
+    debug_cmm :: Bool,
+    debug_rtl :: Bool
   }
   deriving (Show, Data, Typeable)
 
@@ -52,6 +55,8 @@ compileMode =
       debug_simplify = def,
       debug_closure_conversion = def,
       debug_flat = def,
+      debug_rtl = def,
+      debug_cmm = def,
       debug_js = def
     }
 
@@ -104,8 +109,9 @@ pipeline options = do
   lift $ print clo
   lift $ putStrLn (CPSPrinter.prettyCPS hoisted)
   cmm <- hoistIO (CPSToCMM.translate hoisted)
-  lift $ putStrLn "=========== CMM ================"
-  lift $ putStrLn (show cmm)
+  when (debug_cmm options) $ do
+    lift $ putStrLn "=========== CMM ================"
+    lift $ putStrLn (show cmm)
   flat <- hoistIO (HoistToFlat.hoistToFlat clo)
   when (debug_flat options) $ do
     lift $ putStrLn "=========== Flat ================"
@@ -114,4 +120,8 @@ pipeline options = do
   when (debug_js options) $ do
     lift $ putStrLn "=========== JS ================"
     lift $ putStrLn js
+  rtl <- hoistIO (CPSToRTL.translate hoisted)
+  when (debug_rtl options) $ do
+    lift $ putStrLn "=========== RTL ================"
+    lift $ print rtl
 
