@@ -120,7 +120,7 @@ pipeline options = do
   when (debug_js options) $ do
     lift $ putStrLn "=========== JS ================"
     lift $ putStrLn js
-  rtl <- hoistIO (CPSToRTL.translate hoisted)
+  let rtl = CPSToRTL.translate hoisted 
   when (debug_rtl options) $ do
     lift $ putStrLn "=========== RTL ================"
     lift $ print rtl

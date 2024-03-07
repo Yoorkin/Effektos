@@ -46,7 +46,7 @@ instance Pretty Operand where
   pretty (Reg i) = pretty $ "r" ++ show i
   pretty RLK = pretty "RTL"
   pretty (Val i) = pretty $ "v" ++ show i
-  pretty (Label n) = pretty n
+  pretty (Label n) = parens (pretty "label" <+> pretty n)
   pretty (I64 i) = pretty (show i ++ "L")
   pretty Unit = pretty "unit"
  
