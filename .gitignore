@@ -1,2 +1,5 @@
 .stack-work/
+.vscode/
+effektos.cabal
+stack.yaml.lock
 *~

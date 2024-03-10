@@ -2,24 +2,25 @@
 
 module Main (main) where
 
-import qualified ClosureConversion
-import CompileEnv
+import qualified Core.ClosureConversion as ClosureConversion
+import Util.CompileEnv
 import Control.Monad (when)
 import Control.Monad.State.Lazy
-import qualified HoistToFlat
-import Lexer (tokenize,showTokens)
-import Parser (parse)
-import qualified Simp
-import qualified SyntaxToLambda
+import qualified Core.CPSToFlat
+import Syntax.Lexer (tokenize,showTokens)
+import Syntax.Parser (parse)
+import qualified Core.Simp as Simp
+import qualified Syntax.SyntaxToLambda as SyntaxToLambda
 import System.Console.CmdArgs
 import Text.Pretty.Simple (pPrint)
-import TransToCPS
-import TransToJS
-import Uniquify (uniquifyTerm)
-import qualified CPSPrinter
-import CPS (hoisting)
-import qualified CPSToCMM
-import qualified CPSToRTL
+import Lambda.LambdaToCPS as LambdaToCPS
+import JS.FlatToJS as FlatToJS
+import Lambda.Uniquify as Uniquify
+import qualified Core.CPSPrinter as CPSPrinter
+import Core.CPS (hoisting)
+import qualified Core.CPSToCMM as CPSToCMM
+import qualified Core.CPSToRTL as CPSToRTL
+import qualified Core.CPSToFlat as CPSToFlat
 
 data Effektos = Compile
   { files :: [FilePath],
@@ -87,7 +88,7 @@ pipeline options = do
   when (debug_uniquify options) $ do
     lift $ putStrLn "=========== Uniquified ================"
     lift $ print lambda
-  cps <- hoistIO (TransToCPS.translate lambda)
+  cps <- hoistIO (LambdaToCPS.translate lambda)
   when (debug_cps options) $ do
     lift $ putStrLn "=========== CPS ================"
     lift $ putStrLn (CPSPrinter.prettyCPS cps)
@@ -112,11 +113,11 @@ pipeline options = do
   when (debug_cmm options) $ do
     lift $ putStrLn "=========== CMM ================"
     lift $ putStrLn (show cmm)
-  flat <- hoistIO (HoistToFlat.hoistToFlat clo)
+  flat <- hoistIO (CPSToFlat.hoistToFlat clo)
   when (debug_flat options) $ do
     lift $ putStrLn "=========== Flat ================"
     lift $ print flat
-  let js = TransToJS.transl flat
+  let js = FlatToJS.transl flat
   when (debug_js options) $ do
     lift $ putStrLn "=========== JS ================"
     lift $ putStrLn js
