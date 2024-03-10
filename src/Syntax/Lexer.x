@@ -1,6 +1,6 @@
 {
 module Syntax.Lexer(tokenize,Token(..),TokenKind(..),showTokens) where
-import Data.List
+import Data.List (foldl')
 }
 
 %wrapper "posn"
@@ -77,8 +77,8 @@ instance Show Token where
   show (Token line col len kind) = "(" ++ show kind ++ ","
                                   ++ show line ++ ":" 
                                   ++ show col ++ "," 
-								  ++ show len  
-								  ++ ")"
+                                  ++ show len  
+                                  ++ ")"
 
 showTokens tokens = 
   case tokens of 

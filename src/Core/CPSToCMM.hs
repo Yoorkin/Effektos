@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Core.CPSToCMM where
 

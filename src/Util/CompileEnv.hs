@@ -16,19 +16,19 @@ module Util.CompileEnv
     synName,
     freshStr,
     hoistIO,
-    baseStr
+    baseStr,
   )
 where
 
 import Control.Comonad.Identity
+import Control.Lens (Plated (..))
+import Control.Monad.Morph (MFunctor, hoist)
 import Control.Monad.State.Lazy (StateT, get, put)
 import Data.Data
-import Prettyprinter
-import Control.Lens ( Plated(..) )
 import Data.Data.Lens
-import Control.Monad.Morph (hoist, MFunctor)
 import Data.Map.Lazy (Map)
 import qualified Data.Map.Lazy as Map
+import Prettyprinter
 
 type Stamp = Int
 
@@ -51,8 +51,8 @@ instance Pretty Name where
 
 data CompStates
   = Compiling
-      { compNamedStamp :: Map String Stamp
-      , compNextStamp :: Stamp
+      { compNamedStamp :: Map String Stamp,
+        compNextStamp :: Stamp
       }
   | Failed
 
@@ -67,42 +67,41 @@ type CompEnvT m a = StateT CompStates m a
 type CompEnv a = StateT CompStates Identity a
 
 stamp :: (Monad m) => Maybe String -> CompEnvT m Stamp
-stamp mbase = 
+stamp mbase =
   case mbase of
     Nothing -> do
-        s <- get
-        let r = compNextStamp s
-        put (s {compNextStamp = r + 1})
-        pure r
+      s <- get
+      let r = compNextStamp s
+      put (s {compNextStamp = r + 1})
+      pure r
     Just base -> do
-        s <- get
-        let mp = compNamedStamp s
-        let (r,mp') = 
-               case Map.lookup base mp of
-                   Nothing -> (0, Map.insert base 1 mp)
-                   Just x -> (x, Map.insert base (x + 1) mp)
-        put (s { compNamedStamp = mp' })
-        pure r
+      s <- get
+      let mp = compNamedStamp s
+      let (r, mp') =
+            case Map.lookup base mp of
+              Nothing -> (0, Map.insert base 1 mp)
+              Just x -> (x, Map.insert base (x + 1) mp)
+      put (s {compNamedStamp = mp'})
+      pure r
 
 fresh :: (Monad m) => CompEnvT m Name
 fresh = GenName <$> stamp Nothing
 
-freshStr :: Monad m => String -> StateT CompStates m Name
-freshStr str = do 
-        s <- get
-        let mp = compNamedStamp s
-        let (r,mp') = 
-               case Map.lookup str mp of
-                   Nothing -> (0, Map.insert str 1 mp)
-                   Just x -> (x, Map.insert str (x + 1) mp)
-        put (s { compNamedStamp = mp' })
-        pure $ UniName str r
+freshStr :: (Monad m) => String -> StateT CompStates m Name
+freshStr str = do
+  s <- get
+  let mp = compNamedStamp s
+  let (r, mp') =
+        case Map.lookup str mp of
+          Nothing -> (0, Map.insert str 1 mp)
+          Just x -> (x, Map.insert str (x + 1) mp)
+  put (s {compNamedStamp = mp'})
+  pure $ UniName str r
 
 uniName :: (Monad m) => Name -> CompEnvT m Name
 uniName (SynName n) = UniName n <$> stamp (Just n)
 uniName (UniName n _) = UniName n <$> stamp (Just n)
 uniName (GenName _) = GenName <$> stamp Nothing
-
 
 baseStr :: Name -> String
 baseStr (SynName n) = n

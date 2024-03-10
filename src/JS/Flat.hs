@@ -10,9 +10,9 @@ where
 
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
+import qualified Syntax.Constant as C
 import Syntax.Primitive
 import Util.CompileEnv
-import qualified Syntax.Constant as C
 
 data Program
   = Program Fn [Fn]
@@ -81,14 +81,12 @@ instance Pretty Expr where
       <+> pretty cond
       <> colon
       <> nested (hardline <> sepMapBy hardline f (zip index branches))
-      <> case fallback of (Just f) -> pretty "_ ->" <+> pretty f; Nothing -> pretty ""
+      <> case fallback of (Just fb) -> pretty "_ ->" <+> pretty fb; Nothing -> pretty ""
     where
       f (i, e) = pretty (show i) <+> pretty "->" <+> pretty e
   pretty (Exit n) = pretty "exit" <+> pretty n
   pretty (Handle e hdls) = pretty "handle" <> nested (line <> pretty e) <> line <> pretty "with" <+> pretty hdls
   pretty (Raise eff xs) = pretty "raise" <+> pretty eff <+> parens (sepMapBy comma pretty xs)
-
-
 
 renderDoc :: Doc ann -> String
 renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})

@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Core.ClosureConversion (translClosure) where
@@ -35,8 +34,8 @@ type FnClosure = Map.Map Name Name
 findEnv :: Name -> State FnClosure Name
 findEnv n = gets (fromMaybe n . Map.lookup n)
 
-addEnv :: Name -> Name -> State FnClosure ()
-addEnv f env = modify (Map.insert f env)
+-- addEnv :: Name -> Name -> State FnClosure ()
+-- addEnv f env = modify (Map.insert f env)
 
 
 transl :: Term -> CompEnvT (State FnClosure) Term
@@ -52,7 +51,7 @@ transl (LetVal n (Fn k Nothing xs l) m) = do
   nfvars <- mapM uniName fvars
   code <- freshStr ("code_" ++ baseStr n)
   env <- freshStr "env"
-  l' <- wrapProj 1 env nfvars <$> (renames fvars nfvars <$> transl l)
+  l' <- wrapProj 1 env nfvars . renames fvars nfvars <$> transl l
   m' <- transl m
   pure $
     LetVal
@@ -78,7 +77,7 @@ transl (LetFns fns m) = do
       env' <- freshStr "env"
       l' <- renames fvs nfvs <$> transl l
       pure (fcode, Fn k (Just env) xs
-             (LetSel env' 1 env  
+             (LetSel env' 1 env
              (wrapFixed env' fnames fcodes
               (wrapProj 0 env' nfvs l'))))
 
@@ -93,9 +92,6 @@ transl (Apply g k Nothing xs) = do
   env <- lift $ findEnv g
   code <- fresh
   pure $ LetSel code 0 env (Apply code k (Just env) xs)
-
-transl (Raise effect k args) =
-  pure (Raise effect k args)
 
 
 -- continuation

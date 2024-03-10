@@ -12,16 +12,7 @@ import Syntax.DefinitionInfo
 import qualified Lambda.Lambda as L
 import qualified Syntax.PatternMatch as PatternMatch
 import Syntax.AST as S
-import qualified Data.Bifunctor
 import Data.Bifunctor (Bifunctor(first))
-
-constToInt :: Constant -> Int
-constToInt x =
-  case x of
-    (Integer i) -> i
-    (Boolean b) -> if b then 1 else 0
-    (String _) -> error ""
-    Unit -> 0
 
 transProg :: Program -> CompEnv L.Expr
 transProg (Program defs expr) = translExpr datatypes constrs effects expr

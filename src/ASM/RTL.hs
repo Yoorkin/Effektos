@@ -1,6 +1,6 @@
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 module ASM.RTL where
 
-import Util.CompileEnv
 import Prettyprinter
 import Prettyprinter.Render.String
 
@@ -10,7 +10,7 @@ data Fn = Fn String [BasicBlock] deriving Show
 
 type Label = String
 
-data BasicBlock 
+data BasicBlock
   = BasicBlock Label [Inst]
   deriving (Show)
 
@@ -19,7 +19,7 @@ data Operand
   = Reg Int
   | RLK
   | Val Int
-  | Label Label 
+  | Label Label
   | I64 Integer
   | Unit
   deriving (Show)
@@ -35,12 +35,13 @@ data Inst
   | Load Operand Operand Operand -- dst src ofs
   | Store Operand Operand Operand -- dst val ofs
   | Goto Operand
-  | Jeq Operand Operand Operand 
-  | Call String 
+  | Jeq Operand Operand Operand
+  | Call String
   | NewBlock Label
-  | Ret 
+  | Ret
   deriving (Show)
 
+(<=>) :: Doc ann -> Doc ann -> Doc ann
 (<=>) a b = a <+> pretty "<-" <+> b
 
 instance Pretty Operand where
@@ -50,7 +51,7 @@ instance Pretty Operand where
   pretty (Label n) = pretty n
   pretty (I64 i) = pretty (show i)
   pretty Unit = pretty "unit"
- 
+
 instance Pretty BinOp where
   pretty = pretty . show
 
@@ -58,7 +59,7 @@ instance Pretty UryOp where
   pretty = pretty . show
 
 instance Pretty Inst where
-  pretty (Binary a op b c) = space <+> (pretty a <=> pretty b <+> pretty op <+> pretty b)
+  pretty (Binary a op b c) = space <+> (pretty a <=> pretty b <+> pretty op <+> pretty c)
   pretty (Unary a op b) = space <+> (pretty a <=> pretty op <+> pretty b)
   pretty (Move a b) = space <+> (pretty a <=> pretty b)
   pretty (Load a b c) = space <+> (pretty a <=> pretty b <> brackets (pretty c))
@@ -67,24 +68,24 @@ instance Pretty Inst where
   pretty (Jeq a b c) = space <+> (pretty "jeq" <+> pretty a <+> pretty b <+> pretty c)
   pretty (Call f) = space <+> (pretty "call" <+> pretty f)
   pretty (NewBlock n) = pretty n <> pretty ":"
-  pretty Ret = space <+> (pretty "ret")
+  pretty Ret = space <+> pretty "ret"
 
 instance Pretty BasicBlock where
-  pretty (BasicBlock l insts) = pretty l <> pretty ":" <> line <> vsep (map pretty insts) 
+  pretty (BasicBlock l insts) = pretty l <> pretty ":" <> line <> vsep (map pretty insts)
 
 
 instance Pretty Fn where
-  pretty (Fn l bs) = pretty "function" <+> pretty l <+> braces ( 
+  pretty (Fn l bs) = pretty "function" <+> pretty l <+> braces (
                        nest 2 (line <> vsep (map pretty bs)) <> line)
 
 instance Pretty Program where
-  pretty (Program fns bs) = vsep (map pretty fns) <> line 
+  pretty (Program fns bs) = vsep (map pretty fns) <> line
          <> pretty "function entry" <+> braces (nest 2 (line <> vsep (map pretty bs)) <> line)
 
 renderDoc :: Doc ann -> String
 renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
 
 instance Show Program where
-  show = renderDoc . pretty  
+  show = renderDoc . pretty
 
 

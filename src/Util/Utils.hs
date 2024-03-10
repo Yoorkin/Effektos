@@ -1,37 +1,37 @@
 {-# LANGUAGE LambdaCase #-}
-{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Util.Utils where
 
-import Core.CPS
 import Control.Comonad.Store (pos)
-import Control.Lens ( Traversal', Plated(..) )
-import Control.Lens.Plated ( universe, contextsOn )
-import Data.List ((\\),nub)
-import qualified Data.Map.Lazy as Map
-import Data.Maybe (fromMaybe, maybeToList)
-import Control.Lens.Traversal (mapMOf)
+import Control.Lens (Plated (..), Traversal')
 import Control.Lens.Fold (toListOf)
+import Control.Lens.Plated (contextsOn, universe)
+import Control.Lens.Traversal (mapMOf)
+import Core.CPS
 import Data.Foldable (toList)
+import Data.List (nub, (\\))
+import qualified Data.Map.Lazy as Map
+import Data.Maybe (fromMaybe)
 import Util.CompileEnv
 
 bound :: Term -> [Name]
 bound e = nub $ concatMap f (universe e)
   where
-    f (LetVal n (Fn k _ xs _) _) = n:k:xs
+    f (LetVal n (Fn k _ xs _) _) = n : k : xs
     f (LetVal n _ _) = [n]
     f (LetSel n _ _ _) = [n]
-    f (LetCont n1 n2 _ _) = [n1,n2]
+    f (LetCont n1 n2 _ _) = [n1, n2]
     f (LetFns fns _) = concatMap g fns
-                  where g (n,Fn k _ args _) = n:k:args
-                        g _ = error ""
+      where
+        g (n, Fn k _ args _) = n : k : args
+        g _ = error ""
     f (LetPrim n _ _ _) = [n]
     f _ = []
 
 occur :: Term -> [Name]
 occur = nub . toListOf var
-
 
 occurCount :: Term -> Map.Map Name Int
 occurCount t = f Map.empty (toListOf var t)
@@ -48,7 +48,7 @@ def t = concatMap f $ universe t
   where
     f (LetVal n _ _) = [n]
     f (LetSel n _ _ _) = [n]
-    f (LetCont n1 n2 _ _) = [n1,n2]
+    f (LetCont n1 n2 _ _) = [n1, n2]
     f (LetFns fns _) = map fst fns
     f (LetPrim n _ _ _) = [n]
     f _ = []
@@ -68,8 +68,7 @@ used = concatMap f . universe
     f (Switch n _ _ _) = [n]
     f (Halt n) = [n]
     f (Handle _ hdls) = map snd hdls
-    f (Raise _ n ns) = n:ns
-
+    f (Raise _ n ns) = n : ns
 
 usage :: Term -> Map.Map Name Int
 usage = f Map.empty . map pos . contextsOn var
@@ -98,7 +97,7 @@ var f = goExpr
       (LetPrim n p ns t) -> LetPrim <$> f n <*> pure p <*> traverse f ns <*> goExpr t
       (Switch n ix ts fb) -> Switch <$> f n <*> pure ix <*> traverse goExpr ts <*> traverse goExpr fb
       (Halt v) -> Halt <$> f v
-      (Handle e hdls) -> Handle <$> goExpr e <*> traverse (\(x,y) -> (x,) <$> f y) hdls
+      (Handle e hdls) -> Handle <$> goExpr e <*> traverse (\(x, y) -> (x,) <$> f y) hdls
       (Raise eff k x) -> Raise eff <$> f k <*> traverse f x
     goValue x = case x of
       (Var n) -> Var <$> f n

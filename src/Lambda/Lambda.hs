@@ -1,18 +1,18 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Lambda.Lambda where
 
-import Util.CompileEnv
-import Syntax.Constant
-import Syntax.Primitive
 import Control.Lens.Plated
 import Data.Data
 import Data.Data.Lens (uniplate)
 import Prettyprinter
-import Data.Text.Prettyprint.Doc.Render.String (renderString)
+import Syntax.Constant
+import Syntax.Primitive
+import Util.CompileEnv
+import Prettyprinter.Render.String (renderString)
 
 type Fn = (Name, Expr)
 
@@ -32,7 +32,7 @@ data Constructor
 --  +-----+---------------------------+
 -- Each tag and playload is occupying one word, the length of playload are determined by tag.
 -- Some specific optimization can be used in future.
--- 
+--
 
 type Effect = String
 
@@ -53,19 +53,16 @@ data Expr
   | Resume Expr Expr
   deriving (Eq, Ord, Read, Data)
 
-
 isValue :: Expr -> Bool
-isValue = \case 
-        (Var _) -> True
-        (Abs {}) -> True
-        (Const {}) -> True
-        (Tuple {}) -> True
-        (Select {}) -> True
-        (PrimOp {}) -> True
-        (Constr {}) -> True
-        _ -> False
-
-
+isValue = \case
+  (Var _) -> True
+  (Abs {}) -> True
+  (Const {}) -> True
+  (Tuple {}) -> True
+  (Select {}) -> True
+  (PrimOp {}) -> True
+  (Constr {}) -> True
+  _ -> False
 
 instance Plated Repr where
   plate = uniplate
@@ -82,24 +79,24 @@ instance Pretty Expr where
   pretty (Let n e1 e2) = group (pretty "let" <+> group (pretty n <+> pretty "=" <+> pretty e1 <> line <> pretty "in") <> line <> pretty e2)
   pretty (App a b) = parens (pretty a <+> pretty b)
   pretty (Fix ns fns e) = group (pretty "let rec" <+> nest 2 (vcat (zipWith f ns fns)) <> line <> pretty "in" <> line <> pretty e)
-          where f n (arg,expr) = pretty n <+> pretty "=" <+> pretty "fun" <+> pretty (show arg) <+> pretty "->" <+> group (nest 2 (line <> pretty expr))
+    where
+      f n (arg, expr) = pretty n <+> pretty "=" <+> pretty "fun" <+> pretty (show arg) <+> pretty "->" <+> group (nest 2 (line <> pretty expr))
   pretty (Const c) = pretty (show c)
   pretty (Tuple xs) = parens (concatWith (\a b -> a <> pretty "," <+> b) (map pretty xs))
   pretty (Select i e) = pretty e <> pretty "[" <> pretty i <> pretty "]"
   pretty (PrimOp op es) = pretty (show op) <+> fillSep (map pretty es)
   pretty (Constr repr expr) = pretty "Constr" <+> pretty (show repr) <+> pretty expr
   pretty (Switch expr bs fb) = group (align (pretty "case" <+> pretty expr <+> pretty "of" <> (line <> vcat (map f bs ++ [g fb]))))
-          where f (c,e) = group $ pretty "|" <+> pretty (show c) <+> pretty "->" <> nest 4 (line <> pretty e)
-                g (Just e) = group $ pretty "|" <+> pretty "_" <+> pretty "->" <> nest 4 (line <> pretty e)
-                g Nothing = mempty
-  pretty (Handle e hdls) = pretty "handle" <+> pretty e <+> pretty "with" <> line <> hdls' 
-          where hdls' = hsep (map f hdls)
-                f :: (Effect, Name, Name, Expr) -> Doc ann
-                f (eff, k, x, e) = pretty "|" <+> parens (pretty eff <+> pretty k <+> pretty x) <+> pretty "->" <+> nest 2 (pretty e)
+    where
+      f (c, e) = group $ pretty "|" <+> pretty (show c) <+> pretty "->" <> nest 4 (line <> pretty e)
+      g (Just e) = group $ pretty "|" <+> pretty "_" <+> pretty "->" <> nest 4 (line <> pretty e)
+      g Nothing = mempty
+  pretty (Handle e hdls) = pretty "handle" <+> pretty e <+> pretty "with" <> line <> hdls'
+    where
+      hdls' = hsep (map f hdls)
+      f :: (Effect, Name, Name, Expr) -> Doc ann
+      f (eff, k, x, e') = pretty "|" <+> parens (pretty eff <+> pretty k <+> pretty x) <+> pretty "->" <+> nest 2 (pretty e')
   pretty (Raise eff e) = pretty "raise" <+> pretty eff <+> pretty e
-
-
-
 
 renderDoc :: Doc ann -> String
 renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})

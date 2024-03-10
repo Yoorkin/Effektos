@@ -1,7 +1,7 @@
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 module CMM.CMM where
 
 import Util.CompileEnv (Name)
-import Data.Maybe (maybeToList)
 import Prettyprinter
 import Prettyprinter.Render.String
 import Syntax.Primitive as Primitive
@@ -72,6 +72,7 @@ sepBy s xs = case xs of
   [] -> mempty
   _ -> concatWith (\x acc -> x <> s <> acc) xs
 
+wordDoc :: Doc ann
 wordDoc = pretty "uint64_t"
 
 instance Pretty Expr where
@@ -103,6 +104,7 @@ instance Pretty Expr where
     let doc =
           case (op, args) of
             (Primitive.EQ, [a, b]) -> pretty a <+> pretty "==" <+> pretty b
+            _ -> pretty (show (op, args))
      in pretty n
           <+> pretty "="
           <+> parens doc

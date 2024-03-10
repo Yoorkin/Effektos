@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Core.CPS where
 
@@ -10,8 +10,6 @@ import Syntax.Primitive
 import Control.Lens.Plated
 import Data.Data
 import Data.Data.Lens
-import Data.Map.Lazy (Map)
-import qualified Data.Map.Lazy as Map
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 
@@ -80,7 +78,7 @@ hoisting expr =
   where
     wrapConts :: [ContBinding] -> Term -> Term
     wrapConts [] t = t
-    wrapConts conts t = LetConts conts t 
+    wrapConts conts t = LetConts conts t
 
     go :: Term -> ([FnBinding], [ContBinding], Term)
     go (LetPrim n p xs e) =
@@ -91,8 +89,8 @@ hoisting expr =
           (fns2, conts2, e2') = go e2
           cont = (k, Cont x e1')
        in (fns1 ++ fns2, cont : conts1 ++ conts2, e2')
-    go (LetFns fns e) =
-      let fns1 = aux [] fns
+    go (LetFns funcs e) =
+      let fns1 = aux [] funcs
           (fns2, conts2, e') = go e
        in (fns1 ++ fns2, conts2, e')
       where

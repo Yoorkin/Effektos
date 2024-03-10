@@ -1,26 +1,23 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Syntax.PatternMatch where
 
-import Util.CompileEnv
-import qualified Syntax.Constant as Constant
-import Data.List (findIndex, nub)
+import Data.List (nub)
 import Data.Map.Lazy (Map)
-import qualified Data.Map.Lazy as M
 import qualified Data.Map.Lazy as Map
 import Data.Maybe (fromJust)
-import Data.Text (unpack)
-import Data.Text.Lazy (toStrict)
 import Debug.Trace (traceWith)
-import Syntax.DefinitionInfo
 import qualified Lambda.Lambda as L
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
-import Syntax.Primitive as Primitive
 import Syntax.AST
-import Text.Pretty.Simple (pShow)
+import qualified Syntax.Constant as Constant
+import Syntax.DefinitionInfo
+import Syntax.Primitive as Primitive
+import Util.CompileEnv
 
 data Row = Row [Pattern] [(Binder, Occur)] Expr deriving (Show)
 
@@ -112,7 +109,6 @@ default' occur = concatMap f
         PatWildCard -> [Row ps binding expr]
         (PatVar binder) -> [Row ps ((binder, occur) : binding) expr]
         (PatOr q1 q2) -> default' occur [Row (q1 : ps) binding expr] ++ default' occur [Row (q2 : ps) binding expr]
-        _ -> error (show pat)
 
 toDescisionTree :: Map String DataTypeInfo -> Map String ConstrInfo -> [Occur] -> Matrix -> DescisionTree
 toDescisionTree datatypeMap constrMap occurs = \case
@@ -165,8 +161,9 @@ treeToExpr :: (Expr -> CompEnv L.Expr) -> Map Occur Name -> DescisionTree -> Com
 treeToExpr kont baseMap tree =
   let go = treeToExpr kont
    in case tree of
-        (Success bindings expr) -> do expr' <- kont expr 
-                                      wrapBindings baseMap bindings expr'
+        (Success bindings expr) -> do
+          expr' <- kont expr
+          wrapBindings baseMap bindings expr'
         Fail -> pure $ L.PrimOp Abort [L.Const $ Constant.String "pattern match(es) are non-exhaustive"]
         (Switch occur branches fallback) ->
           case occur of
@@ -186,15 +183,15 @@ treeToExpr kont baseMap tree =
 
     wrapBindings :: Map Occur Name -> [(Binder, Occur)] -> L.Expr -> CompEnv L.Expr
     wrapBindings _ [] expr = pure expr
-    wrapBindings baseMap ((binder, occur) : binding) expr =
-         case occur of 
-           (Inside i baseOccur) | Just base <- Map.lookup baseOccur baseMap -> do
-              let binder' = synName binder
-              wrapBindings (Map.insert occur binder' baseMap) binding (L.Let binder' (L.Select i (L.Var base)) expr)
-           Itself | Just name <- Map.lookup Itself baseMap -> do
-              let binder' = synName binder
-              wrapBindings baseMap binding (L.Let binder' (L.Var name) expr)
-           _ -> error $ "base occur " ++ show occur ++ " not found"
+    wrapBindings baseMap' ((binder, occur) : binding) expr =
+      case occur of
+        (Inside i baseOccur) | Just base <- Map.lookup baseOccur baseMap' -> do
+          let binder' = synName binder
+          wrapBindings (Map.insert occur binder' baseMap') binding (L.Let binder' (L.Select i (L.Var base)) expr)
+        Itself | Just name <- Map.lookup Itself baseMap' -> do
+          let binder' = synName binder
+          wrapBindings baseMap' binding (L.Let binder' (L.Var name) expr)
+        _ -> error $ "base occur " ++ show occur ++ " not found"
 
 -- transl :: Map String DataTypeInfo -> Map String ConstrInfo -> Expr -> Expr
 -- transl datatypes constrs e@(Match cond pats exprs) =
@@ -205,15 +202,16 @@ treeToExpr kont baseMap tree =
 transl :: Map String DataTypeInfo -> Map String ConstrInfo -> (Expr -> CompEnv L.Expr) -> Expr -> CompEnv L.Expr
 transl datatypes constrs kont = \case
   (Match cond pats exprs) -> do
-      binder <- freshStr "$binder"
-      let matrix = tracePShow "matrix initail" $ zipWith (\p e -> Row [p] [] e) pats exprs
-      let tree = tracePShow "final tree" $ toDescisionTree datatypes constrs [Itself] matrix
-      expr <- treeToExpr kont (Map.fromList [(Itself, binder)]) tree
-      L.Let binder <$> kont cond <*> pure expr
+    binder <- freshStr "$binder"
+    let matrix = tracePShow "matrix initail" $ zipWith (\p e -> Row [p] [] e) pats exprs
+    let tree = tracePShow "final tree" $ toDescisionTree datatypes constrs [Itself] matrix
+    expr <- treeToExpr kont (Map.fromList [(Itself, binder)]) tree
+    L.Let binder <$> kont cond <*> pure expr
 
 -- (Fun pat expr) ->
 -- (Let pat expr1 expr2) ->
 
+tracePShow :: (Show a) => [Char] -> a -> a
 tracePShow s =
   traceWith
     ( (++) "------------------------------\n"

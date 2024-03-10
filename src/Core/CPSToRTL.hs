@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Core.CPSToRTL where
 
@@ -142,11 +143,11 @@ translExpr fnk (CPS.Switch n cs ts fb) = do
     translConst = \case
       (Constant.Integer i) -> (I64 $ integerFromInt i)
       Constant.Unit -> Unit
-    translCase (const, term) = do
+    translCase (const', term) = do
       n' <- subst n
       caseLabel <- freshLabel
       caseInstr <- translExpr fnk term
-      let testInstr = Jeq n' (translConst const) (Label caseLabel)
+      let testInstr = Jeq n' (translConst const') (Label caseLabel)
       let caseBlock = NewBlock caseLabel : caseInstr
       return (testInstr, caseBlock)
     getFallbackInstr = do
@@ -209,10 +210,12 @@ translate t = Program fns' mainBlocks
         x -> ([], x)
 
 collectFnContNames :: CPS.Term -> [Name]
-collectFnContNames (CPS.LetFns fns _) = concatMap (\(n, CPS.Fn _ _ _ e) -> n : processConts e) fns
+collectFnContNames (CPS.LetFns fns _) = concatMap f fns
   where
     processConts (CPS.LetConts conts _) = map fst conts
     processConts _ = []
+    f (n, CPS.Fn _ _ _ e) = n : processConts e
+    f _ = undefined
 collectFnContNames _ = []
 
 labelOperandMap :: CPS.Term -> Map Name Operand

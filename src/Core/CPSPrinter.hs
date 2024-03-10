@@ -1,15 +1,14 @@
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Core.CPSPrinter where
 
 import Core.CPS as CPS hiding (renderDoc)
 import Util.CompileEnv
-import Syntax.Constant as Constant
 import qualified Data.Map.Lazy as Map
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
-import Syntax.Primitive as Primitive
 import Util.Utils (occurCount)
 
 sepBy :: Doc a -> [Doc a] -> Doc a

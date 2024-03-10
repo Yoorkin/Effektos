@@ -1,17 +1,17 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Core.Simp (simplify) where
 
-import Core.CPS
-import Util.CompileEnv
 import Control.Lens (transformOn)
-import Control.Monad.State (runStateT)
-import Control.Monad.State.Lazy (evalState, evalStateT)
+import Control.Monad.State.Lazy (evalState)
+import Core.CPS
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
-import Debug.Trace (traceShowWith, traceWith)
+import Debug.Trace (traceWith)
 import Syntax.Primitive as Primitive
+import Util.CompileEnv
 import Util.Utils (def, usage, var)
 import Prelude hiding (lookup)
 

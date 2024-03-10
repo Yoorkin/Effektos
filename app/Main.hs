@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module Main (main) where
 
@@ -6,7 +7,6 @@ import qualified Core.ClosureConversion as ClosureConversion
 import Util.CompileEnv
 import Control.Monad (when)
 import Control.Monad.State.Lazy
-import qualified Core.CPSToFlat
 import Syntax.Lexer (tokenize,showTokens)
 import Syntax.Parser (parse)
 import qualified Core.Simp as Simp

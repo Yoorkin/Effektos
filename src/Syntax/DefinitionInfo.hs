@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 module Syntax.DefinitionInfo where
 
 import Syntax.AST

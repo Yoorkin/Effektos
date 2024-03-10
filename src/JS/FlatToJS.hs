@@ -6,8 +6,8 @@ module JS.FlatToJS (transl) where
 import JS.Flat as Flat
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
-import qualified Syntax.Primitive as P
 import qualified Syntax.Constant as C
+import qualified Syntax.Primitive as P
 import Text.RawString.QQ
 
 renderDoc :: Doc ann -> String
@@ -17,7 +17,8 @@ transl :: Flat.Program -> String
 transl (Program f fs) = renderDoc $ pretty runtime <> hardline <> sepMapBy hardline translFn (f : fs)
 
 runtime :: String
-runtime = [r|
+runtime =
+  [r|
   // effect handler
   function _notnull(x){ 
     if(x===undefined){ 
@@ -52,24 +53,24 @@ translVal =
     (Proj i n) -> pretty "_notnull" <> parens (pretty n <> brackets (pretty i))
     (Tuple ns) -> brackets (sepMapBy comma (\z -> pretty "_notnull" <> parens (pretty z)) ns)
     (PrimOp op ns) ->
-      let op2 a b op = pretty a <+> pretty op <+> pretty b
+      let op2 a b o = pretty a <+> pretty o <+> pretty b
        in case (op, ns) of
             (P.Extern f, args) -> translExtern f args
             (P.Add2, [a, b]) -> op2 a b "+"
             (P.GT, [a, b]) -> op2 a b ">"
             (P.EQ, [a, b]) -> op2 a b "==="
             (P.LT, [a, b]) -> op2 a b "<"
-            x -> pretty $ show op
+            _ -> pretty $ show op
 
 translBinding :: Binding -> Doc ann
 translBinding (Binding n v) = pretty "const" <+> pretty n <+> pretty "=" <+> translVal v
 
 translConstant :: C.Constant -> Doc ann
 translConstant = \case
-                  (C.Integer i) -> pretty (show i)
-                  (C.String s) -> parens (pretty $ show s)
-                  (C.Boolean b) -> pretty (if b then "true" else "false")
-                  C.Unit -> pretty "0"
+  (C.Integer i) -> pretty (show i)
+  (C.String s) -> parens (pretty $ show s)
+  (C.Boolean b) -> pretty (if b then "true" else "false")
+  C.Unit -> pretty "0"
 
 translExpr :: Expr -> Doc ann
 translExpr =
