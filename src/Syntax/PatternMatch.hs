@@ -12,12 +12,12 @@ import Data.Maybe (fromJust)
 import Debug.Trace (traceWith)
 import qualified Lambda.Lambda as L
 import Prettyprinter
-import Prettyprinter.Render.String (renderString)
 import Syntax.AST
 import qualified Syntax.Constant as Constant
 import Syntax.DefinitionInfo
 import Syntax.Primitive as Primitive
 import Util.CompileEnv
+import Util.Prettyprint
 
 data Row = Row [Pattern] [(Binder, Occur)] Expr deriving (Show)
 
@@ -30,11 +30,8 @@ data DescisionTree
   | Switch !Occur ![(PatternSign, DescisionTree)] !(Maybe DescisionTree)
   | Swap !Int !DescisionTree
 
-renderDoc :: Doc ann -> String
-renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
-
 instance Show DescisionTree where
-  show tree = renderDoc (pretty tree)
+  show = render . pretty
 
 instance Pretty DescisionTree where
   pretty (Success bs e) = pretty "Success" <+> pretty (show bs) <+> align (pretty $ show e)

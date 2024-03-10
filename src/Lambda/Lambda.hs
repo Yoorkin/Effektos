@@ -12,7 +12,7 @@ import Prettyprinter
 import Syntax.Constant
 import Syntax.Primitive
 import Util.CompileEnv
-import Prettyprinter.Render.String (renderString)
+import Util.Prettyprint
 
 type Fn = (Name, Expr)
 
@@ -98,8 +98,5 @@ instance Pretty Expr where
       f (eff, k, x, e') = pretty "|" <+> parens (pretty eff <+> pretty k <+> pretty x) <+> pretty "->" <+> nest 2 (pretty e')
   pretty (Raise eff e) = pretty "raise" <+> pretty eff <+> pretty e
 
-renderDoc :: Doc ann -> String
-renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
-
 instance Show Expr where
-  show = renderDoc . pretty
+  show = render . pretty

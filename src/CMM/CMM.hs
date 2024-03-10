@@ -1,10 +1,11 @@
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
 module CMM.CMM where
 
-import Util.CompileEnv (Name)
 import Prettyprinter
-import Prettyprinter.Render.String
 import Syntax.Primitive as Primitive
+import Util.CompileEnv (Name)
+import Util.Prettyprint
 
 data Program = Program [Fn] Expr [Block]
 
@@ -38,17 +39,15 @@ data Value
   | Variable Var
   deriving (Show)
 
-renderDoc :: Doc ann -> String
-renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
-
 instance Show Program where
-  show = renderDoc . pretty
+  show = render . pretty
 
 instance Pretty Program where
   pretty (Program fns e blks) =
     vsep (map pretty fns)
       <> line
-      <> pretty "int" <+> pretty "main"
+      <> pretty "int"
+      <+> pretty "main"
       <> parens mempty
       <> braces (nest 2 (line <> pretty e) <> line <> vsep (map blk2doc blks) <> line)
 
@@ -57,7 +56,8 @@ blk2doc (label, expr) = pretty label <> pretty ":" <> nest 2 (hardline <> pretty
 
 instance Pretty Fn where
   pretty (Fn n args e blks) =
-    wordDoc <+> pretty n
+    wordDoc
+      <+> pretty n
       <> parens (concatWith (\a b -> a <> comma <+> b) $ map (\a -> wordDoc <+> pretty a) args)
       <> braces (nest 2 (line <> pretty e) <> line <> vsep (map blk2doc blks) <> hardline)
 
@@ -67,25 +67,24 @@ instance Pretty Value where
   pretty Unit = pretty "0"
   pretty (Variable n) = parens wordDoc <> pretty (show n)
 
-sepBy :: Doc a -> [Doc a] -> Doc a
-sepBy s xs = case xs of
-  [] -> mempty
-  _ -> concatWith (\x acc -> x <> s <> acc) xs
-
 wordDoc :: Doc ann
 wordDoc = pretty "uint64_t"
 
 instance Pretty Expr where
   pretty (Define n e) = wordDoc <+> pretty n <> semi <> line <> pretty e
   pretty (Malloc n i e) =
-    pretty n <+> pretty "=" <+> parens wordDoc
+    pretty n
+      <+> pretty "="
+      <+> parens wordDoc
       <> pretty "malloc"
       <> parens (pretty i <+> pretty "*" <+> pretty "sizeof" <> parens wordDoc)
       <> semi
       <> line
       <> pretty e
   pretty (Select n1 i n2 e) =
-    pretty n1 <+> pretty "=" <+> parens (parens (wordDoc <> pretty "*") <> pretty n2)
+    pretty n1
+      <+> pretty "="
+      <+> parens (parens (wordDoc <> pretty "*") <> pretty n2)
       <> brackets (pretty i)
       <> semi
       <> line
@@ -93,8 +92,9 @@ instance Pretty Expr where
   pretty (Mutate n1 i n2 e) =
     parens (parens (wordDoc <> pretty "*") <> pretty n1)
       <> brackets (pretty i)
-        <+> pretty "="
-        <+> parens wordDoc <> pretty n2
+      <+> pretty "="
+      <+> parens wordDoc
+      <> pretty n2
       <> semi
       <> line
       <> pretty e
@@ -112,13 +112,18 @@ instance Pretty Expr where
           <> line
           <> pretty e
   pretty (Switch c cases fallback) =
-    pretty "switch" <+> parens (pretty c)
-      <> braces (nest 2
-        ( line <> vsep (map g cases ++ f fallback)) <> line
+    pretty "switch"
+      <+> parens (pretty c)
+      <> braces
+        ( nest
+            2
+            (line <> vsep (map g cases ++ f fallback))
+            <> line
         )
     where
       g (v, e) =
-        pretty "case" <+> pretty v
+        pretty "case"
+          <+> pretty v
           <> pretty ":"
           <+> braces (nest 2 (line <> pretty e) <> line)
       f fb = case fb of
@@ -126,8 +131,10 @@ instance Pretty Expr where
         Just e -> [pretty "default" <> pretty ":" <+> braces (nest 2 (pretty e))]
   pretty (Jump label) = pretty "goto" <+> pretty label <> semi
   pretty (Call n1 f args e) =
-    pretty n1 <+> pretty "=" 
-      <+> parens (parens (wordDoc <> parens (pretty "*") <> parens (sepBy comma (map (const wordDoc) args))) <> pretty f) <+> parens (sepBy (comma <> space) (map pretty args))
+    pretty n1
+      <+> pretty "="
+      <+> parens (parens (wordDoc <> parens (pretty "*") <> parens (sepBy comma (map (const wordDoc) args))) <> pretty f)
+      <+> parens (sepBy (comma <> space) (map pretty args))
       <> semi
       <> line
       <> pretty e

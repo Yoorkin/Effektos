@@ -4,20 +4,12 @@
 
 module Core.CPSPrinter where
 
-import Core.CPS as CPS hiding (renderDoc)
-import Util.CompileEnv
+import Core.CPS as CPS
 import qualified Data.Map.Lazy as Map
 import Prettyprinter
-import Prettyprinter.Render.String (renderString)
+import Util.CompileEnv
+import Util.Prettyprint
 import Util.Utils (occurCount)
-
-sepBy :: Doc a -> [Doc a] -> Doc a
-sepBy s xs = case xs of
-  [] -> mempty
-  _ -> concatWith (\x acc -> x <> s <> acc) xs
-
-sepMap :: Doc a -> (b -> Doc a) -> [b] -> Doc a
-sepMap s f = sepBy s . map f
 
 closure2doc :: Maybe Name -> Doc a
 closure2doc = \case
@@ -165,7 +157,7 @@ term2doc occurs bindings expr =
                 <> pretty "with"
                 <> nest 2 (line <> pretty hdls)
             )
-          <> bindings2doc occurs bindings
+            <> bindings2doc occurs bindings
         (Raise h k xs) ->
           group (pretty "Raise" <+> pretty h <+> pretty k <+> pretty xs)
         -- <> line
@@ -228,10 +220,7 @@ bindings2doc occurs bindingMap =
     conts = filter isCont bindings
     fns = filter isFn bindings
 
-renderDoc :: Doc ann -> String
-renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
-
 prettyCPS :: Term -> String
-prettyCPS term = show occurs ++ "\n" ++ (renderDoc . term2doc occurs Map.empty $ term)
+prettyCPS term = show occurs ++ "\n" ++ (render . term2doc occurs Map.empty $ term)
   where
     occurs = occurCount term

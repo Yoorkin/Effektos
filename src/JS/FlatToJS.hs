@@ -5,16 +5,13 @@ module JS.FlatToJS (transl) where
 
 import JS.Flat as Flat
 import Prettyprinter
-import Prettyprinter.Render.String (renderString)
 import qualified Syntax.Constant as C
 import qualified Syntax.Primitive as P
 import Text.RawString.QQ
-
-renderDoc :: Doc ann -> String
-renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
+import Util.Prettyprint
 
 transl :: Flat.Program -> String
-transl (Program f fs) = renderDoc $ pretty runtime <> hardline <> sepMapBy hardline translFn (f : fs)
+transl (Program f fs) = render $ pretty runtime <> hardline <> sepMap hardline translFn (f : fs)
 
 runtime :: String
 runtime =
@@ -42,7 +39,7 @@ translExtern :: String -> [Name] -> Doc ann
 translExtern f xs =
   let f' = case f of
         x -> x
-   in pretty f' <> parens (sepMapBy comma (pretty . show) xs)
+   in pretty f' <> parens (sepMap comma (pretty . show) xs)
 
 translVal :: Value -> Doc ann
 translVal =
@@ -51,7 +48,7 @@ translVal =
     (I32 i) -> pretty i
     (Var n) -> pretty n
     (Proj i n) -> pretty "_notnull" <> parens (pretty n <> brackets (pretty i))
-    (Tuple ns) -> brackets (sepMapBy comma (\z -> pretty "_notnull" <> parens (pretty z)) ns)
+    (Tuple ns) -> brackets (sepMap comma (\z -> pretty "_notnull" <> parens (pretty z)) ns)
     (PrimOp op ns) ->
       let op2 a b o = pretty a <+> pretty o <+> pretty b
        in case (op, ns) of
@@ -75,7 +72,7 @@ translConstant = \case
 translExpr :: Expr -> Doc ann
 translExpr =
   \case
-    (Apply f xs) -> pretty f <> parens (sepMapBy comma pretty xs)
+    (Apply f xs) -> pretty f <> parens (sepMap comma pretty xs)
     (Switch n ix es fallback) ->
       let aux (i, e) = pretty "case" <+> translConstant i <> pretty ": " <> translExpr e <> pretty "; break"
        in pretty "switch"
@@ -83,7 +80,7 @@ translExpr =
             <> braces
               ( nested
                   ( hardline
-                      <> sepMapBy hardline aux (zip ix es)
+                      <> sepMap hardline aux (zip ix es)
                       <> ( case fallback of
                              Nothing -> mempty
                              Just d -> pretty "default:" <> nested (hardline <> translExpr d)
@@ -100,26 +97,23 @@ translExpr =
                 <//> pretty "_pop"
               <> parens (dquotes (pretty eff))
        in aux hdls
-    (Raise eff args) -> pretty "_raise" <> parens (dquotes (pretty eff) <> comma <> sepMapBy comma pretty args)
+    (Raise eff args) -> pretty "_raise" <> parens (dquotes (pretty eff) <> comma <> sepMap comma pretty args)
     (Exit n) -> pretty "console.log" <> parens (pretty n)
 
 translFn :: Fn -> Doc ann
 translFn (Fn n xs bs e) =
   pretty "function"
     <+> pretty n
-    <> parens (sepMapBy comma pretty xs)
+    <> parens (sepMap comma pretty xs)
     <> braces
       ( nested
           ( hardline
-              <> sepMapBy hardline translBinding bs
+              <> sepMap hardline translBinding bs
               <> hardline
               <> translExpr e
           )
           <> hardline
       )
-
-sepMapBy :: Doc ann -> (a -> Doc ann) -> [a] -> Doc ann
-sepMapBy sep' f xs = concatWith (\a b -> a <> sep' <> b) (map f xs)
 
 nested :: Doc ann -> Doc ann
 nested = nest 2

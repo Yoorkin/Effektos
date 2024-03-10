@@ -2,7 +2,7 @@
 module ASM.RTL where
 
 import Prettyprinter
-import Prettyprinter.Render.String
+import Util.Prettyprint
 
 data Program = Program [Fn] [BasicBlock]
 
@@ -82,10 +82,7 @@ instance Pretty Program where
   pretty (Program fns bs) = vsep (map pretty fns) <> line
          <> pretty "function entry" <+> braces (nest 2 (line <> vsep (map pretty bs)) <> line)
 
-renderDoc :: Doc ann -> String
-renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
-
 instance Show Program where
-  show = renderDoc . pretty
+  show = render . pretty
 
 

@@ -9,10 +9,10 @@ module JS.Flat
 where
 
 import Prettyprinter
-import Prettyprinter.Render.String (renderString)
 import qualified Syntax.Constant as C
 import Syntax.Primitive
 import Util.CompileEnv
+import Util.Prettyprint
 
 data Program
   = Program Fn [Fn]
@@ -38,7 +38,7 @@ instance Pretty Value where
   pretty (I32 v) = pretty v
   pretty (Var n) = pretty n
   pretty (Proj i n) = pretty n <> brackets (pretty i)
-  pretty (Tuple ns) = parens (sepMapBy (comma <> space) pretty ns)
+  pretty (Tuple ns) = parens (sepMap (comma <> space) pretty ns)
   pretty v@(PrimOp {}) = pretty $ show v
 
 type Effect = String
@@ -57,9 +57,6 @@ data Expr
 nested :: Doc ann -> Doc ann
 nested = nest 4
 
-sepMapBy :: Doc ann -> (a -> Doc ann) -> [a] -> Doc ann
-sepMapBy sep' f xs = concatWith (\a b -> a <> sep' <> b) (map f xs)
-
 instance Pretty Program where
   pretty (Program m fns) = concatWith (<//>) (map pretty (m : fns))
 
@@ -69,27 +66,24 @@ instance Pretty Binding where
 instance Pretty Fn where
   pretty (Fn n args bindings expr) =
     pretty n
-      <> parens (sepMapBy (comma <> space) pretty args)
+      <> parens (sepMap (comma <> space) pretty args)
       <> pretty ":"
       <> nested (hardline <> concatWith (<>) (map (\x -> pretty x <> hardline) bindings) <> pretty expr)
       <> hardline
 
 instance Pretty Expr where
-  pretty (Apply f args) = pretty f <> parens (sepMapBy (comma <> space) pretty args)
+  pretty (Apply f args) = pretty f <> parens (sepMap (comma <> space) pretty args)
   pretty (Switch cond index branches fallback) =
     pretty "switch"
       <+> pretty cond
       <> colon
-      <> nested (hardline <> sepMapBy hardline f (zip index branches))
+      <> nested (hardline <> sepMap hardline f (zip index branches))
       <> case fallback of (Just fb) -> pretty "_ ->" <+> pretty fb; Nothing -> pretty ""
     where
       f (i, e) = pretty (show i) <+> pretty "->" <+> pretty e
   pretty (Exit n) = pretty "exit" <+> pretty n
   pretty (Handle e hdls) = pretty "handle" <> nested (line <> pretty e) <> line <> pretty "with" <+> pretty hdls
-  pretty (Raise eff xs) = pretty "raise" <+> pretty eff <+> parens (sepMapBy comma pretty xs)
-
-renderDoc :: Doc ann -> String
-renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
+  pretty (Raise eff xs) = pretty "raise" <+> pretty eff <+> parens (sepMap comma pretty xs)
 
 instance Show Program where
-  show = renderDoc . pretty
+  show = render . pretty

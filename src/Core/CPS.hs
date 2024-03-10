@@ -4,14 +4,12 @@
 
 module Core.CPS where
 
-import Util.CompileEnv
-import qualified Syntax.Constant as C
-import Syntax.Primitive
 import Control.Lens.Plated
 import Data.Data
 import Data.Data.Lens
-import Prettyprinter
-import Prettyprinter.Render.String (renderString)
+import qualified Syntax.Constant as C
+import Syntax.Primitive
+import Util.CompileEnv
 
 data Value
   = Var Name
@@ -46,9 +44,6 @@ data Term
   | Raise Effect Cont [Argument] -- h k x
   | Halt Name
   deriving (Eq, Show, Ord, Read, Data)
-
-renderDoc :: Doc ann -> String
-renderDoc = renderString . layoutPretty (defaultLayoutOptions {layoutPageWidth = AvailablePerLine 50 1.0})
 
 instance Plated Value where
   plate = uniplate
