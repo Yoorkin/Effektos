@@ -4,16 +4,11 @@ module ASM.RTL where
 import Prettyprinter
 import Util.Prettyprint
 
-data Program = Program [Fn] [BasicBlock]
+data Program = Program [Fn] [Inst]
 
-data Fn = Fn String [BasicBlock] deriving Show
+data Fn = Fn String [Inst] deriving Show
 
 type Label = String
-
-data BasicBlock
-  = BasicBlock Label [Inst]
-  deriving (Show)
-
 
 data Operand
   = Reg Int
@@ -39,14 +34,13 @@ data Inst
   | Call String
   | NewBlock Label
   | Ret
-  deriving (Show)
 
 (<=>) :: Doc ann -> Doc ann -> Doc ann
 (<=>) a b = a <+> pretty "<-" <+> b
 
 instance Pretty Operand where
   pretty (Reg i) = pretty $ "r" ++ show i
-  pretty RLK = pretty "rtl"
+  pretty RLK = pretty "rlk"
   pretty (Val i) = pretty $ "v" ++ show i
   pretty (Label n) = pretty n
   pretty (I64 i) = pretty (show i)
@@ -57,6 +51,9 @@ instance Pretty BinOp where
 
 instance Pretty UryOp where
   pretty = pretty . show
+
+instance Show Inst where
+  show = render . pretty
 
 instance Pretty Inst where
   pretty (Binary a op b c) = space <+> (pretty a <=> pretty b <+> pretty op <+> pretty c)
@@ -69,10 +66,6 @@ instance Pretty Inst where
   pretty (Call f) = space <+> (pretty "call" <+> pretty f)
   pretty (NewBlock n) = pretty n <> pretty ":"
   pretty Ret = space <+> pretty "ret"
-
-instance Pretty BasicBlock where
-  pretty (BasicBlock l insts) = pretty l <> pretty ":" <> line <> vsep (map pretty insts)
-
 
 instance Pretty Fn where
   pretty (Fn l bs) = pretty "function" <+> pretty l <+> braces (

@@ -4,16 +4,16 @@
 
 module Core.CPSToRTL where
 
-import qualified Core.CPS as CPS
-import Util.CompileEnv
-import qualified Syntax.Constant as Constant
+import ASM.RTL as RTL
 import Control.Monad (mapAndUnzipM, zipWithM)
 import Control.Monad.Extra (concatMapM)
 import qualified Control.Monad.State.Lazy as State
+import qualified Core.CPS as CPS
 import Data.Map.Lazy hiding (map)
 import GHC.Num (integerFromInt)
+import qualified Syntax.Constant as Constant
 import qualified Syntax.Primitive as Op
-import ASM.RTL as RTL
+import Util.CompileEnv
 import Prelude hiding (lookup)
 
 type Operands = Map Name Operand
@@ -36,8 +36,6 @@ append n = State.state $ \(mp, label, count) ->
 
 freshLabel :: State Label
 freshLabel = State.state $ \(a, label, c) -> ("block" ++ show label, (a, label + 1, c))
-
-type BasicBlocks = [BasicBlock]
 
 type FnKont = Name
 
@@ -176,14 +174,14 @@ labelMap :: (Ord a, Show a) => [a] -> Map a Operand
 labelMap names = fromList (map (\n -> (n, Label $ show n)) names)
 
 translFn :: [Name] -> (Name, CPS.Value) -> Fn
-translFn contFnNames (n, CPS.Fn k (Just env) xs t) = Fn (show n) [entryBlock]
+translFn contFnNames (n, CPS.Fn k (Just env) xs t) = Fn (show n) instr
   where
     initState = (labelMap contFnNames, 0, 0)
-    entryBlock = flip State.evalState initState $ do
+    instr = flip State.evalState initState $ do
       contInst <- concatMapM (translCont (Just k)) conts
       argSavingInst <- zipWithM (\i x -> Move <$> append x <*> pure (Reg i)) [1 ..] (env : xs)
       entryInst <- translExpr (Just k) t'
-      return $ BasicBlock "start" (NewBlock "start" : argSavingInst ++ entryInst ++ contInst)
+      return (NewBlock "start" : argSavingInst ++ entryInst ++ contInst)
     (conts, t') =
       case t of
         (CPS.LetConts cs m) -> (cs, m)
@@ -191,13 +189,13 @@ translFn contFnNames (n, CPS.Fn k (Just env) xs t) = Fn (show n) [entryBlock]
 translFn _ _ = error "invalid input"
 
 translate :: CPS.Term -> Program
-translate t = Program fns' mainBlocks
+translate t = Program fns' mainInstr
   where
-    mainBlocks = flip State.evalState (labelMap . collectFnContNames $ t, 0, 0) $ do
+    mainInstr = flip State.evalState (labelMap . collectFnContNames $ t, 0, 0) $ do
       contInstr <- concatMapM (translCont Nothing) conts
       entryInstr <- translExpr Nothing t2
       let instr = NewBlock "start" : entryInstr ++ contInstr
-      return [BasicBlock "start" instr]
+      return instr
     fns' = map (translFn labels) fns
     labels = collectFnContNames t
     (fns, t1) =
@@ -210,9 +208,9 @@ translate t = Program fns' mainBlocks
         x -> ([], x)
 
 collectFnContNames :: CPS.Term -> [Name]
-collectFnContNames (CPS.LetFns fns _) = concatMap f fns
+collectFnContNames (CPS.LetFns fns term) = processConts term ++ concatMap f fns
   where
-    processConts (CPS.LetConts conts _) = map fst conts
+    processConts (CPS.LetConts conts' _) = map fst conts'
     processConts _ = []
     f (n, CPS.Fn _ _ _ e) = n : processConts e
     f _ = undefined

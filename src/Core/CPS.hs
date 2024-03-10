@@ -51,15 +51,6 @@ instance Plated Value where
 instance Plated Term where
   plate = uniplate
 
--- hoisting :: Term -> Term
--- hoisting expr@(LetPrim n p xs e) =
---     case hoisting e of
---       (LetFns fs e') -> LetFns fs (LetPrim n p xs e')
---       (LetVal f fn@(Fn {}) e') -> LetFns [(f, fn)] (LetPrim n p xs e')
---       _ -> expr
--- hoisting (LetCont k x e1 e) =
---     case hoisting e of
-
 type FnBinding = (Name, Value)
 
 type ContBinding = (Name, Value)
