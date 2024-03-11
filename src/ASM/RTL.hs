@@ -17,7 +17,7 @@ data Operand
   | Label Label
   | I64 Integer
   | Unit
-  deriving (Show)
+  deriving (Eq,Ord)
 
 data BinOp = Add2 | Sub2 | EQ deriving Show
 
@@ -37,6 +37,9 @@ data Inst
 
 (<=>) :: Doc ann -> Doc ann -> Doc ann
 (<=>) a b = a <+> pretty "<-" <+> b
+
+instance Show Operand where
+  show = render . pretty
 
 instance Pretty Operand where
   pretty (Reg i) = pretty $ "r" ++ show i

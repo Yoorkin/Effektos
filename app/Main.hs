@@ -22,6 +22,7 @@ import qualified Core.CPSToCMM as CPSToCMM
 import qualified Core.CPSToRTL as CPSToRTL
 import qualified Core.CPSToFlat as CPSToFlat
 import qualified ASM.CFG as CFG
+import qualified ASM.Liveness as Liveness
 
 data Effektos = Compile
   { files :: [FilePath],
@@ -129,4 +130,7 @@ pipeline options = do
     lift $ putStrLn "----------- CFGs ---------------"
     let cfgs = CFG.fromRTL rtl
     lift $ pPrint cfgs
+    lift $ putStrLn "----------- Liveness -----------"
+    let livenessMap = Liveness.analyze cfgs
+    lift $ print livenessMap
 
