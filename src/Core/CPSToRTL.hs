@@ -61,7 +61,7 @@ translValue n (CPS.Tuple xs) =
       pure
         [ Move (Reg 1) (I64 $ integerFromInt (length xs)),
           Move RLK (Label label),
-          Call "malloc",
+          Call (Foreign "malloc") 1,
           NewBlock label,
           Move v (Reg 1)
         ]
@@ -119,7 +119,7 @@ translExpr _ (CPS.Apply f k (Just env) xs) = do
       f' <- subst f
       pure
         [ Move RLK k',
-          Goto f'
+          Call f' (length xs + 1)
         ]
 translExpr fnk (CPS.LetPrim n op args t) = do
   inst <- pmt op args
@@ -156,7 +156,7 @@ translExpr _ (CPS.Halt x) = do
   x' <- subst x
   return
     [ Move (Reg 1) x',
-      Call "exit"
+      Call (Foreign "exit") 1
     ]
 
 translCont :: Maybe FnKont -> (Name, CPS.Value) -> State [Inst]
@@ -178,8 +178,8 @@ translFn contFnNames (n, CPS.Fn k (Just env) xs t) = Fn (show n) instr
   where
     initState = (labelMap contFnNames, 0, 0)
     instr = flip State.evalState initState $ do
-      contInst <- concatMapM (translCont (Just k)) conts
       argSavingInst <- zipWithM (\i x -> Move <$> append x <*> pure (Reg i)) [1 ..] (env : xs)
+      contInst <- concatMapM (translCont (Just k)) conts
       entryInst <- translExpr (Just k) t'
       return (NewBlock "start" : argSavingInst ++ entryInst ++ contInst)
     (conts, t') =

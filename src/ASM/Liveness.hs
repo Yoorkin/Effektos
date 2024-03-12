@@ -47,20 +47,23 @@ livenessOfInstr succLiveness instr = (in', out')
     gen = readed instr
     kill = written instr
 
-    filterOutVal = filter $ \case
+    filterOut = filter $ \case
       (Val _) -> True
+      (Reg _) -> True
+      RLK -> True
       _ -> False
 
     written =
-      filterOutVal . \case
+      filterOut . \case
         (Binary a _ _ _) -> [a]
         (Unary a _ _) -> [a]
         (Move a _) -> [a]
         (Load a _ _) -> [a]
         (Store a _ _) -> [a]
+        (Call _ _) -> [Reg 1]
         _ -> []
     readed =
-      filterOutVal . \case
+      filterOut . \case
         (Binary _ _ b c) -> [b, c]
         (Unary _ _ b) -> [b]
         (Move _ b) -> [b]
@@ -68,6 +71,8 @@ livenessOfInstr succLiveness instr = (in', out')
         (Store _ b c) -> [b, c]
         (Goto a) -> [a]
         (Jeq a b c) -> [a, b, c]
+        Ret -> [RLK]
+        (Call _ arity) -> RLK : [Reg i | i <- [1..arity]]
         _ -> []
 
 livenessOfBlock :: FnLiveInfo -> BasicBlock -> [Liveness]

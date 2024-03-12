@@ -53,7 +53,7 @@ fromRTL (RTL.Program fns entry) = CFGs $ Map.fromList (entryCFGPair : fnCFGPairs
                   (RTL.Goto (RTL.Label dst)) -> Just dst
                   (RTL.Jeq _ _ (RTL.Label dst)) -> Just dst
                   (RTL.Move RTL.RLK (RTL.Label dst)) -> Just dst
-                  (RTL.Call "exit") -> Just endLabel
+                  (RTL.Call (RTL.Label "exit") _) -> Just endLabel
                   RTL.Ret -> Just endLabel
                   _ -> Nothing
               )

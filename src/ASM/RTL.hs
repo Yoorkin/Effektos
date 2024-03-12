@@ -15,6 +15,7 @@ data Operand
   | RLK
   | Val Int
   | Label Label
+  | Foreign String
   | I64 Integer
   | Unit
   deriving (Eq,Ord)
@@ -22,6 +23,8 @@ data Operand
 data BinOp = Add2 | Sub2 | EQ deriving Show
 
 data UryOp = Add1 | Sub1 deriving Show
+
+type Arity = Int
 
 data Inst
   = Binary Operand BinOp Operand Operand
@@ -31,7 +34,7 @@ data Inst
   | Store Operand Operand Operand -- dst val ofs
   | Goto Operand
   | Jeq Operand Operand Operand
-  | Call String
+  | Call Operand Arity
   | NewBlock Label
   | Ret
 
@@ -46,6 +49,7 @@ instance Pretty Operand where
   pretty RLK = pretty "rlk"
   pretty (Val i) = pretty $ "v" ++ show i
   pretty (Label n) = pretty n
+  pretty (Foreign n) = pretty n
   pretty (I64 i) = pretty (show i)
   pretty Unit = pretty "unit"
 
@@ -66,7 +70,7 @@ instance Pretty Inst where
   pretty (Store a b c) = space <+> (pretty a <> brackets (pretty c) <=> pretty b)
   pretty (Goto a) = space <+> (pretty "goto" <+> pretty a)
   pretty (Jeq a b c) = space <+> (pretty "jeq" <+> pretty a <+> pretty b <+> pretty c)
-  pretty (Call f) = space <+> (pretty "call" <+> pretty f)
+  pretty (Call f a) = space <+> (pretty "call" <+> pretty f <+> pretty a)
   pretty (NewBlock n) = pretty n <> pretty ":"
   pretty Ret = space <+> pretty "ret"
 
