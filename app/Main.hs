@@ -23,6 +23,9 @@ import qualified Core.CPSToRTL as CPSToRTL
 import qualified Core.CPSToFlat as CPSToFlat
 import qualified ASM.CFG as CFG
 import qualified ASM.Liveness as Liveness
+import qualified Data.Map as Map
+import qualified ASM.RegAlloc as RegAlloc
+import qualified ASM.RTL as RTL
 
 data Effektos = Compile
   { files :: [FilePath],
@@ -133,4 +136,7 @@ pipeline options = do
     lift $ putStrLn "----------- Liveness -----------"
     let livenessMap = Liveness.analyze cfgs
     lift $ print livenessMap
+    lift $ putStrLn "----- Register Allocation ------"
+    let solutions = Map.map (RegAlloc.allocation [RTL.Reg i | i <- [0..30]]) livenessMap
+    lift $ print solutions
 
