@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# HLINT ignore "Use newtype instead of data" #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
@@ -5,36 +6,47 @@
 module ASM.Graph where
 
 import Data.List (nub)
+import Data.Maybe (mapMaybe)
+import Prettyprinter
+import Util.Prettyprint
 
 data Graph a
-  = Graph [Edge a]
+  = Graph [a] [Edge a]
+  deriving (Show)
 
-type Edge a = (a, a)
+newtype Edge a = Edge (a, a)
+
+instance (Eq a) => Eq (Edge a) where
+  Edge (a1, b1) == Edge (a2, b2)
+    | a1 == a2 && b1 == b2 = True
+    | a1 == b2 && b1 == a2 = True
+    | otherwise = False
+
+instance (Show a) => Show (Edge a) where
+  show (Edge a) = show a
+
+isEdgeOf :: (Eq a) => a -> Edge a -> Bool
+isEdgeOf v (Edge (a, b))
+  | a == v || b == v = True
+  | otherwise = False
 
 edgesOf :: (Eq a) => a -> Graph a -> [Edge a]
-edgesOf v (Graph edges) = filter isEdgeOfV edges
+edgesOf v (Graph _ edges) = filter (isEdgeOf v) edges
+
+removeVertix :: (Eq a, Show a) => a -> Graph a -> Graph a
+removeVertix v (Graph vex edges) =
+    Graph (filter (/= v) vex) (filter (not . isEdgeOf v) edges)
+
+inOutVexs :: (Eq a) => a -> Graph a -> [a]
+inOutVexs v (Graph _ edges) = mapMaybe f edges
   where
-    isEdgeOfV (a, b)
-      | a == v && b == v = True
-      | otherwise = False
-
-removeVertix :: (Eq a) => a -> Graph a -> Graph a
-removeVertix v (Graph edges) = Graph (filter notEdgeOfV edges)
-  where
-    notEdgeOfV (a, b)
-      | a /= v && b /= v = False
-      | otherwise = True
-
-inVertix, outVertix :: (Eq a) => a -> Graph a -> [a]
-inVertix v (Graph edges) = map fst $ filter ((==) v . snd) edges
-outVertix v (Graph edges) = map snd $ filter ((==) v . fst) edges
-
-inDegree, outDegree :: (Eq a) => Graph a -> a -> Int
-inDegree graph v = length (inVertix v graph)
-outDegree graph v = length (outVertix v graph)
+    f (Edge (a, b))
+      | a == v = Just b
+      | b == v = Just a
+      | otherwise = Nothing
 
 allVertix :: (Eq a) => Graph a -> [a]
-allVertix (Graph edges) = let (a, b) = unzip edges in nub (a ++ b)
+allVertix (Graph vexs _) = vexs
 
-fromEdges :: (Eq a) => [Edge a] -> Graph a
-fromEdges = Graph
+fromVertixEdges :: (Eq a) => [a] -> [Edge a] -> Graph a
+fromVertixEdges = Graph

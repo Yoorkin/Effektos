@@ -13,14 +13,16 @@ import Prettyprinter
 
 type Operands = [Operand]
 
-type Liveness = (Operands,Operands)
+type InstrLiveness = (Operands,Operands)
 
-emptyLiveness :: Liveness
+emptyLiveness :: InstrLiveness
 emptyLiveness = ([],[])
 
 newtype FnLiveInfo
-  = FnLiveInfo (Map.Map Label [Liveness])
+  = FnLiveInfo (Map.Map Label [InstrLiveness])
   deriving (Eq)
+
+type Liveness = Map.Map String FnLiveInfo
 
 instance Pretty FnLiveInfo where
   pretty (FnLiveInfo mp) = vsep (map f (Map.toList mp))
@@ -38,7 +40,7 @@ type Ins = Map.Map Label [Operand]
 
 type Outs = Map.Map Label [Operand]
 
-livenessOfInstr :: [Liveness] -> Inst -> Liveness
+livenessOfInstr :: [InstrLiveness] -> Inst -> InstrLiveness
 livenessOfInstr succLiveness instr = (in', out')
   where
     out' = foldl union [] (map fst succLiveness)
@@ -72,10 +74,10 @@ livenessOfInstr succLiveness instr = (in', out')
         (Goto a) -> [a]
         (Jeq a b c) -> [a, b, c]
         Ret -> [RLK]
-        (Call _ arity) -> RLK : [Reg i | i <- [1..arity]]
+        (Call f arity) -> f : RLK : [Reg i | i <- [1..arity]]
         _ -> []
 
-livenessOfBlock :: FnLiveInfo -> BasicBlock -> [Liveness]
+livenessOfBlock :: FnLiveInfo -> BasicBlock -> [InstrLiveness]
 livenessOfBlock (FnLiveInfo mp) (Block label instr _ succs)
   = zipWith livenessOfInstr (map (:[]) (tail liveness) ++ [succsLive]) instr
   where

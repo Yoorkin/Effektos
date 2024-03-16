@@ -26,6 +26,8 @@ import qualified ASM.Liveness as Liveness
 import qualified Data.Map as Map
 import qualified ASM.RegAlloc as RegAlloc
 import qualified ASM.RTL as RTL
+import Prettyprinter
+import Util.Prettyprint (traceDocWith)
 
 data Effektos = Compile
   { files :: [FilePath],
@@ -136,7 +138,12 @@ pipeline options = do
     lift $ putStrLn "----------- Liveness -----------"
     let livenessMap = Liveness.analyze cfgs
     lift $ print livenessMap
+    let regs = [RTL.Reg i | i <- [1..30]]
+    let solutions = RegAlloc.allocation regs livenessMap 
     lift $ putStrLn "----- Register Allocation ------"
-    let solutions = Map.map (RegAlloc.allocation [RTL.Reg i | i <- [0..30]]) livenessMap
+    lift $ print solutions
+    lift $ putStrLn "----- Rewrite by solutions ------"
+    let rtl' = RegAlloc.rewrite solutions rtl
+    lift $ print rtl'
     lift $ print solutions
 
