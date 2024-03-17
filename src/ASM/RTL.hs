@@ -13,6 +13,7 @@ type Label = String
 data Operand
   = Reg Int
   | RLK
+  | Arg Int
   | Val Int
   | Label Label
   | Foreign String

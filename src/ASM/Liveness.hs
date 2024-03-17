@@ -61,7 +61,6 @@ livenessOfInstr succLiveness instr = (in', out')
         (Unary a _ _) -> [a]
         (Move a _) -> [a]
         (Load a _ _) -> [a]
-        (Store a _ _) -> [a]
         (Call _ _) -> [Reg 1]
         _ -> []
     readed =
@@ -70,7 +69,7 @@ livenessOfInstr succLiveness instr = (in', out')
         (Unary _ _ b) -> [b]
         (Move _ b) -> [b]
         (Load _ b c) -> [b, c]
-        (Store _ b c) -> [b, c]
+        (Store a b c) -> [a, b, c]
         (Goto a) -> [a]
         (Jeq a b c) -> [a, b, c]
         Ret -> [RLK]

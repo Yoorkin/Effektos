@@ -9,6 +9,7 @@ import Control.Monad (mapAndUnzipM, zipWithM)
 import Control.Monad.Extra (concatMapM)
 import qualified Control.Monad.State.Lazy as State
 import qualified Core.CPS as CPS
+import qualified Data.Map as Map
 import Data.Map.Lazy hiding (map)
 import GHC.Num (integerFromInt)
 import qualified Syntax.Constant as Constant
@@ -36,6 +37,7 @@ append n = State.state $ \(mp, label, count) ->
 
 freshLabel :: State Label
 freshLabel = State.state $ \(a, label, c) -> ("block" ++ show label, (a, label + 1, c))
+
 
 type FnKont = Name
 
@@ -173,11 +175,12 @@ translCont _ _ = error "invalid input"
 labelMap :: (Ord a, Show a) => [a] -> Map a Operand
 labelMap names = fromList (map (\n -> (n, Label $ show n)) names)
 
-translFn :: [Name] -> (Name, CPS.Value) -> Fn
-translFn contFnNames (n, CPS.Fn k (Just env) xs t) = Fn (show n) instr
+translFn :: [Name] -> (Name, CPS.Value) -> State Fn
+translFn contFnNames (n, CPS.Fn k (Just env) xs t) = do
+  State.modify (\(_, label, _) -> (labelMap contFnNames, label, 0))
+  Fn (show n) <$> instr
   where
-    initState = (labelMap contFnNames, 0, 0)
-    instr = flip State.evalState initState $ do
+    instr = do
       argSavingInst <- zipWithM (\i x -> Move <$> append x <*> pure (Reg i)) [1 ..] (env : xs)
       contInst <- concatMapM (translCont (Just k)) conts
       entryInst <- translExpr (Just k) t'
@@ -189,14 +192,16 @@ translFn contFnNames (n, CPS.Fn k (Just env) xs t) = Fn (show n) instr
 translFn _ _ = error "invalid input"
 
 translate :: CPS.Term -> Program
-translate t = Program fns' mainInstr
+translate t = flip State.evalState initState $ Program <$> fns' <*> mainInstr
   where
-    mainInstr = flip State.evalState (labelMap . collectFnContNames $ t, 0, 0) $ do
+    initState = (labelMap labels, 0, 0)
+    mainInstr = do
       contInstr <- concatMapM (translCont Nothing) conts
+      State.modify (\(_, label, _) -> (labelMap labels, label, 0))
       entryInstr <- translExpr Nothing t2
       let instr = NewBlock "start" : entryInstr ++ contInstr
       return instr
-    fns' = map (translFn labels) fns
+    fns' = mapM (translFn labels) fns
     labels = collectFnContNames t
     (fns, t1) =
       case t of
