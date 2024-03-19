@@ -19,6 +19,7 @@ data Primitive
   | LT
   | Not
   | And
+  | Or
   | Xor
   | Abort
   | Extern String
