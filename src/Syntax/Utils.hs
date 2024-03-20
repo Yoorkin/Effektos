@@ -7,6 +7,7 @@ module Syntax.Utils where
 import Syntax.Lexer
 import Syntax.Primitive as Op
 import Syntax.AST
+import Data.Char (isLower)
 
 parseError :: [Token] -> a
 parseError tokens = error $ "Parse error: " ++ show (take 10 tokens)
@@ -33,3 +34,7 @@ selectPrimOp (Token _ _ _ (Symbol x)) =
     "<>" -> NE
     _ -> error $ show x
 selectPrimOp _ = error ""
+
+makePatConstr :: String -> [Pattern] -> Pattern
+makePatConstr s@(x:_) [] | isLower x = PatVar s  
+makePatConstr s pats = PatConstr s pats

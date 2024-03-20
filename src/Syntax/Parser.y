@@ -113,8 +113,8 @@ Op : '+' { $1 }
    | '!=' { $1 }
    | '==' {$1}
 
-Pattern : IDENT                                  { PatConstr $1 [] }
-        | '(' IDENT many1(Pattern) ')'           { PatConstr $2 $3 }
+Pattern : IDENT                                  { makePatConstr $1 [] }
+        | '(' IDENT many1(Pattern) ')'           { makePatConstr $2 $3 }
 		| '_'                                    { PatWildCard }
 		| Constant                               { PatConstant $1 }
 		| '(' sepBy(Pattern,',') ')'             { case $2 of 
