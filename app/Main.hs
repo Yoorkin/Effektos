@@ -28,6 +28,7 @@ import qualified ASM.RegAlloc as RegAlloc
 import qualified ASM.RTL as RTL
 import Prettyprinter
 import Util.Prettyprint (traceDocWith)
+import qualified Typing.Typer as Typer
 
 data Effektos = Compile
   { files :: [FilePath],
@@ -87,6 +88,8 @@ pipeline options = do
   when (debug_syntax options) $ do
     lift $ putStrLn "=========== Syntax ================"
     lift $ pPrint syntax
+  lift $ putStrLn "=========== Typing ================"
+  pPrint $ Typer.typingProgram syntax
   lambda <- hoistIO (SyntaxToLambda.transProg syntax)
   when (debug_lambda options) $ do
     lift $ putStrLn "=========== Lambda ================"

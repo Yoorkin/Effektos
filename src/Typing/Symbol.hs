@@ -1,7 +1,10 @@
+{-# LANGUAGE LambdaCase #-}
 module Typing.Symbol where
 
 import Syntax.Primitive as Op
 import Data.List ((\\), nub)
+import Syntax.Constant(Constant)
+import qualified Syntax.Constant as Constant
 
 type Arity = Int
 
@@ -11,12 +14,12 @@ data Type
   = TypeVar TyVar
   | TypeConstr Symbol [Type]
   | TypeForall [TyVar] Type
-  deriving (Show,Eq)
+  deriving (Show,Eq,Ord)
 
 data Symbol
   = TypeConstructor String Arity
   | TypeScheme String Arity Type
-  deriving (Show,Eq)
+  deriving (Show,Eq,Ord)
 
 free :: Type -> [TyVar]
 free ty = nub (go ty)
@@ -53,6 +56,13 @@ splitArrowType ty = aux ty []
 infixr 5 |->
 (|->) :: Type -> Type -> Type
 a |-> b = makeArrowType a b
+
+typeOfConstant :: Constant -> Type
+typeOfConstant = \case
+          (Constant.Integer _) -> intType
+          (Constant.Boolean _) -> boolType
+          Constant.Unit -> unitType
+          _ -> error ""
 
 typeOfPrim :: Primitive -> Type
 typeOfPrim op = 
