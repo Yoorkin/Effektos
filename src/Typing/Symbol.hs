@@ -1,10 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE EmptyCase #-}
 
 module Typing.Symbol where
 
 import Data.List (nub, (\\))
 import Data.List.Split (splitOn)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 
 type Arity = Int
 
@@ -29,15 +32,56 @@ qualified = f . splitOn "."
     f (x : xs) = QualifiedPath x (f xs)
 
 data Symbol
-  = TypeConstrInfo QualifiedName Arity
-  | TypeSchemeInfo QualifiedName Arity Type
-  | -- data constructors
+  = -- name, arity
+    TypeConstrInfo QualifiedName Arity
+  | -- name, arity, scheme type
+    TypeSchemeInfo QualifiedName Arity Type
+  | -- name, data constructor names
     DataTypeInfo QualifiedName [QualifiedName]
-  | DataConstrInfo QualifiedName Arity Type
-  | -- effect constructors
-    EffectTypeInfo [QualifiedName]
-  | EffectConstrInfo Arity Type
+  | -- name, arity, data type name
+    DataConstrInfo QualifiedName Arity [Type] QualifiedName
+  | -- name, effect constructor names
+    EffectTypeInfo QualifiedName [QualifiedName]
+  | -- name, arity, effect type name
+    EffectConstrInfo QualifiedName Arity [Type] QualifiedName
   deriving (Show, Eq, Ord)
+
+type Table = Map.Map QualifiedName Symbol
+
+data SymbolTable =
+    SymbolTable Table Table Table
+  deriving Show
+
+makeSymbolTable :: [Symbol] -> SymbolTable
+makeSymbolTable syms = SymbolTable types constrs values
+     where
+       zipWithName = Map.fromList . map (\x -> (qualifiedName x, x))
+       types = zipWithName $ filter isTypeInfo syms
+       constrs = zipWithName $ filter isConstrInfo syms
+       values = Map.empty
+       isTypeInfo = \case
+                      (DataTypeInfo {}) -> True
+                      (EffectTypeInfo {}) -> True
+                      (TypeConstrInfo {}) -> True
+                      _ -> False
+       isConstrInfo = \case
+                       (DataConstrInfo {}) -> True
+                       (EffectConstrInfo {}) -> True
+
+
+
+lookupType, lookupConstr :: QualifiedName -> SymbolTable -> Maybe Symbol
+lookupType k (SymbolTable t _ _) = Map.lookup k t
+lookupConstr k (SymbolTable _ c _) = Map.lookup k c
+
+qualifiedName :: Symbol -> QualifiedName
+qualifiedName = \case
+  (TypeConstrInfo n _) -> n
+  (TypeSchemeInfo n _ _) -> n
+  (DataTypeInfo n _) -> n
+  (DataConstrInfo n _ _ _) -> n
+  (EffectTypeInfo n _) -> n
+  (EffectConstrInfo n _ _ _) -> n
 
 free :: Type -> [TyVar]
 free ty = nub (go ty)

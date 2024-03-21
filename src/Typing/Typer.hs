@@ -9,8 +9,8 @@ import Data.Foldable (foldlM)
 import Data.Map.Strict (Map, (!))
 import qualified Data.Map.Strict as Map
 import qualified Syntax.AST as AST
-import Typing.Symbol
 import Typing.Builtin
+import Typing.Symbol
 import Typing.Typedtree
 
 type Bindings = Map String Type
@@ -153,6 +153,16 @@ typingExpr bindings (AST.Sequence expr1 expr2) =
 typingExpr _ AST.Hole =
   Hole <$> freshType
 typingExpr _ _ = error ""
+
+definitionSymbols :: AST.Definition -> [Symbol]
+definitionSymbols (AST.Data name constrs) = dataSym : constrSyms
+  where
+    dataSym = DataTypeInfo (qualified name) (map qualifiedName constrSyms)
+    constrSyms = map (\(constr, tys) -> DataConstrInfo (qualified constr) tys (qualified name)) constrs
+definitionSymbols (AST.Effect name ty) = effectSym : constrSyms
+  where
+    effectSym = EffectTypeInfo (qualified name) (map qualifiedName constrSyms)
+    constrSyms = [EffectConstrInfo (qualified name) [ty]]
 
 typingProgram :: AST.Program -> Program
 typingProgram (AST.Program _ expr) =
