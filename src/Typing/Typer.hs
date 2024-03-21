@@ -10,6 +10,7 @@ import Data.Map.Strict (Map, (!))
 import qualified Data.Map.Strict as Map
 import qualified Syntax.AST as AST
 import Typing.Symbol
+import Typing.Builtin
 import Typing.Typedtree
 
 type Bindings = Map String Type
@@ -63,7 +64,7 @@ typingExpr bindings (AST.Fun pat body) =
   do
     (bindings', pat') <- typingPattern bindings pat
     body' <- typingExpr bindings' body
-    let ty = makeArrowType (typeOfPat pat') (typeOfExpr body')
+    let ty = arrowType (typeOfPat pat') (typeOfExpr body')
     return (Fun ty pat' body')
 typingExpr bindings (AST.App f x) =
   do
@@ -71,7 +72,7 @@ typingExpr bindings (AST.App f x) =
     x' <- typingExpr bindings x
     ty <- freshType
     let actualFnTy = typeOfExpr f'
-    let expectedFnTy = makeArrowType (typeOfExpr x') ty
+    let expectedFnTy = arrowType (typeOfExpr x') ty
     constraint actualFnTy expectedFnTy
     return (App ty f' x')
 typingExpr bindings (AST.Let pat body expr) =
@@ -98,7 +99,7 @@ typingExpr bindings (AST.Fix binders fns expr) =
       body' <- typingExpr bindings2 body
       constraint (typeOfPat pat') (typeOfExpr body')
       return (pat', body')
-    typeOfFn (pat, body) = makeArrowType (typeOfPat pat) (typeOfExpr body)
+    typeOfFn (pat, body) = arrowType (typeOfPat pat) (typeOfExpr body)
 typingExpr bindings (AST.If cond ifso ifnot) =
   do
     cond' <- typingExpr bindings cond
@@ -129,7 +130,7 @@ typingExpr bindings (AST.Match cond pats exprs) =
 typingExpr bindings (AST.Tuple elems) =
   do
     elems' <- mapM (typingExpr bindings) elems
-    let ty = makeTupleType (map typeOfExpr elems')
+    let ty = tupleType (map typeOfExpr elems')
     return (Tuple ty elems')
 typingExpr bindings (AST.Prim prim args) = do
   do
