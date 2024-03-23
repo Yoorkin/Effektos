@@ -8,9 +8,12 @@ import Control.Monad.State
 import Data.Foldable (foldlM)
 import Data.Map.Strict (Map, (!))
 import qualified Data.Map.Strict as Map
+import Data.Maybe (fromJust)
 import qualified Syntax.AST as AST
 import Typing.Builtin
+import qualified Typing.Builtin as Builtin
 import Typing.Symbol
+import qualified Typing.Symbol as Symbol
 import Typing.Typedtree
 
 type Bindings = Map String Type
@@ -154,18 +157,20 @@ typingExpr _ AST.Hole =
   Hole <$> freshType
 typingExpr _ _ = error ""
 
-definitionSymbols :: AST.Definition -> [Symbol]
-definitionSymbols (AST.Data name constrs) = dataSym : constrSyms
+definitionSymbols :: SymbolTable -> AST.Definition -> [Symbol]
+definitionSymbols table (AST.Data name constrs) = dataSym : constrSyms
   where
     dataSym = DataTypeInfo (qualified name) (map qualifiedName constrSyms)
-    constrSyms = map (\(constr, tys) -> DataConstrInfo (qualified constr) tys (qualified name)) constrs
-definitionSymbols (AST.Effect name ty) = effectSym : constrSyms
+    processConstr (constr, annos) =
+      DataConstrInfo (qualified constr) (length annos) (map (annoType table) annos) (qualified name)
+    constrSyms = map processConstr constrs
+definitionSymbols table (AST.Effect name anno) = effectSym : constrSyms
   where
     effectSym = EffectTypeInfo (qualified name) (map qualifiedName constrSyms)
-    constrSyms = [EffectConstrInfo (qualified name) [ty]]
+    constrSyms = [EffectConstrInfo (qualified name) 1 [annoType table anno] (qualified name)]
 
 typingProgram :: AST.Program -> Program
-typingProgram (AST.Program _ expr) =
+typingProgram (AST.Program defs expr) =
   let (expr', context') = runState (typingExpr Map.empty expr) context
       solutions = unify (constraints context') []
       rewritten = rewriteExpr (Map.fromList solutions) expr'
@@ -173,7 +178,8 @@ typingProgram (AST.Program _ expr) =
   where
     freshTypes = [TypeVar (v : show (i :: Int)) | v <- ['a' .. 'z'], i <- [0 ..]]
     context = Context freshTypes []
-
+    table = 
+ 
 unify :: [Constraint] -> [Constraint] -> [Constraint]
 unify [] acc = acc
 unify (c@(a, b) : cs) acc = case c of
@@ -238,3 +244,15 @@ rewriteExpr subst = \case
     goTy = rewriteType subst
     goPat = rewritePattern subst
     goFns = map $ \(pat, body) -> (goPat pat, go body)
+
+annoType :: SymbolTable -> AST.Anno -> Type
+annoType table (AST.AnnoVar var) = annoType table (AST.AnnoTypeConstr var [])
+annoType table (AST.AnnoArrow a b) = annoType table (AST.AnnoTypeConstr "Builtin.Arrow" [a,b])
+annoType table (AST.AnnoTuple xs) = annoType table (AST.AnnoTypeConstr ("Builtin.Tuple" ++ show (length xs)) xs
+annoType table (AST.AnnoTypeConstr constr annos) =
+  case constr' of
+    TypeConstrInfo name arity | arity == length annos -> TypeConstr name elems
+    _ -> error ""
+  where
+    constr' = fromJust (Symbol.lookupTypeInfo (qualified constr) table)
+    elems = map (annoType table) annos

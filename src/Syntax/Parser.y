@@ -91,16 +91,16 @@ endWith(x,end) : x end { $1 }
 Start : many(Definition) Expr EOF { Program $1 $2 }
 
 Definition : 'data' IDENT '=' option('|') sepBy1(Constructor,'|') { Data $2 $5 }
-           | 'effect' IDENT '=' Type { Effect $2 $4 }
+           | 'effect' IDENT '=' Anno { Effect $2 $4 }
 
-Constructor : IDENT many(Type)  { ($1,$2) }
+Constructor : IDENT many(Anno)  { ($1,$2) }
 
-Type : IDENT  { TypeVar $1 }
-   | Type '->' Type { TypeArrow $1 $3 }
-   | '(' sepBy(Type,',') ')' { case $2 of
-                                   [] -> TypeVar "unit"
-                                   [x] -> x
-                                   xs -> TypeTuple xs }
+Anno : IDENT  { AnnoVar $1 }
+     | Anno '->' Anno { AnnoArrow $1 $3 }
+     | '(' sepBy(Anno,',') ')' { case $2 of
+                                     [] -> AnnoVar "unit"
+                                     [x] -> x
+                                     xs -> AnnoTuple xs }
 
 Op : '+' { $1 } 
    | '-' { $1 }
@@ -115,29 +115,29 @@ Op : '+' { $1 }
 
 Pattern : IDENT                                  { makePatConstr $1 [] }
         | '(' IDENT many1(Pattern) ')'           { makePatConstr $2 $3 }
-		| '_'                                    { PatWildCard }
-		| Constant                               { PatConstant $1 }
-		| '(' sepBy(Pattern,',') ')'             { case $2 of 
-                                                     [] -> PatConstr "()" []
-                                                     [x] -> x
-                                                     xs -> PatTuple xs }
+        | '_'                                    { PatWildCard }
+        | Constant                               { PatConstant $1 }
+        | '(' sepBy(Pattern,',') ')'             { case $2 of 
+                                                         [] -> PatConstr "()" []
+                                                         [x] -> x
+                                                         xs -> PatTuple xs }
 
 
 Binding : IDENT '=' Expr                         { ($1, $3) }
 
 Expr : 'fun' Pattern '->' Expr                   { Fun $2 $4 }
      | 'let' Pattern '=' Expr 'in' Expr          { Let $2 $4 $6 }
-	 | 'let' 'rec' sepBy1(Binding,'and') 'in' Expr  
-	                                             { recBindings $3 $5 }
+     | 'let' 'rec' sepBy1(Binding,'and') 'in' Expr  
+                                                 { recBindings $3 $5 }
      | 'if' Expr 'then' Expr 'else' Expr         { If $2 $4 $6 }
      | 'case' Expr 'of' option('|') sepBy1(Case,'|') 
-	                                             { let (pats,cases) = unzip $5 in Match $2 pats cases }
+                                                 { let (pats,cases) = unzip $5 in Match $2 pats cases }
      | Expr ';' Expr                             { Sequence $1 $3 } 
      | 'handle' Expr 'with' option('|') sepBy1(Handler,'|')  
-	                                             { Handle $2 $5 }
-	 | 'resume' '(' Expr ',' Expr ')'            { Resume $3 $5 }
-	 | 'raise' '(' IDENT ',' Expr ')'            { Raise $3 $5 }
-	 | 'extern' STRING Expr                      { Prim (Primitive.Extern $2) [$3] }
+                                                 { Handle $2 $5 }
+     | 'resume' '(' Expr ',' Expr ')'            { Resume $3 $5 }
+     | 'raise' '(' IDENT ',' Expr ')'            { Raise $3 $5 }
+     | 'extern' STRING Expr                      { Prim (Primitive.Extern $2) [$3] }
      | Term                                      { $1 }
 
 Case : Pattern '->' Expr { ($1, $3) }
@@ -154,12 +154,12 @@ Atom : IDENT                                     { Var $1 }
                                                       []  -> Syntax.Const Unit
                                                       [x] -> x
                                                       xs -> Tuple xs }
-     | Atom ':' Type                             { Anno $1 $3 }
+     | Atom ':' Anno                             { Anno $1 $3 }
      | Constant                                  { Syntax.Const $1 }
 
 
 Constant : INT          { Constant.Integer $1 }
          | BOOL         { Constant.Boolean $1 }
-	    | STRING       { Constant.String $1 }
+         | STRING       { Constant.String $1 }
 
 

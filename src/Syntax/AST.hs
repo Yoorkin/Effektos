@@ -1,6 +1,6 @@
 module Syntax.AST
   ( Program (..),
-    Type (..),
+    Anno (..),
     Binder,
     Fn,
     Expr (..),
@@ -20,14 +20,15 @@ data Program
 type Constr = String
 
 data Definition
-  = Data String [(Constr, [Type])]
-  | Effect String Type
+  = Data String [(Constr, [Anno])]
+  | Effect String Anno
   deriving (Show)
 
-data Type
-  = TypeVar String
-  | TypeTuple [Type]
-  | TypeArrow Type Type
+data Anno
+  = AnnoVar String
+  | AnnoArrow Anno Anno
+  | AnnoTuple [Anno]
+  | AnnoTypeConstr String [Anno]
   deriving (Show)
 
 type Binder = String
@@ -53,7 +54,7 @@ data Expr
   | Match Expr [Pattern] [Expr]
   | Tuple [Expr]
   | Prim Primitive [Expr]
-  | Anno Expr Type
+  | Anno Expr Anno
   | Const Constant
   | Sequence Expr Expr
   | Hole

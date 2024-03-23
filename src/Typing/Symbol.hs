@@ -1,6 +1,6 @@
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# LANGUAGE EmptyCase #-}
 
 module Typing.Symbol where
 
@@ -15,7 +15,6 @@ type TyVar = String
 
 data Type
   = TypeVar TyVar
-  | TypeSolved QualifiedName
   | TypeConstr QualifiedName [Type]
   | TypeForall [TyVar] Type
   deriving (Show, Eq, Ord)
@@ -48,31 +47,29 @@ data Symbol
 
 type Table = Map.Map QualifiedName Symbol
 
-data SymbolTable =
-    SymbolTable Table Table Table
-  deriving Show
+data SymbolTable
+  = SymbolTable Table Table Table
+  deriving (Show)
 
 makeSymbolTable :: [Symbol] -> SymbolTable
 makeSymbolTable syms = SymbolTable types constrs values
-     where
-       zipWithName = Map.fromList . map (\x -> (qualifiedName x, x))
-       types = zipWithName $ filter isTypeInfo syms
-       constrs = zipWithName $ filter isConstrInfo syms
-       values = Map.empty
-       isTypeInfo = \case
-                      (DataTypeInfo {}) -> True
-                      (EffectTypeInfo {}) -> True
-                      (TypeConstrInfo {}) -> True
-                      _ -> False
-       isConstrInfo = \case
-                       (DataConstrInfo {}) -> True
-                       (EffectConstrInfo {}) -> True
+  where
+    zipWithName = Map.fromList . map (\x -> (qualifiedName x, x))
+    types = zipWithName $ filter isTypeInfo syms
+    constrs = zipWithName $ filter isConstrInfo syms
+    values = Map.empty
+    isTypeInfo = \case
+      (DataTypeInfo {}) -> True
+      (EffectTypeInfo {}) -> True
+      (TypeConstrInfo {}) -> True
+      _ -> False
+    isConstrInfo = \case
+      (DataConstrInfo {}) -> True
+      (EffectConstrInfo {}) -> True
 
-
-
-lookupType, lookupConstr :: QualifiedName -> SymbolTable -> Maybe Symbol
-lookupType k (SymbolTable t _ _) = Map.lookup k t
-lookupConstr k (SymbolTable _ c _) = Map.lookup k c
+lookupTypeInfo, lookupConstrInfo :: QualifiedName -> SymbolTable -> Maybe Symbol
+lookupTypeInfo k (SymbolTable t _ _) = Map.lookup k t
+lookupConstrInfo k (SymbolTable _ c _) = Map.lookup k c
 
 qualifiedName :: Symbol -> QualifiedName
 qualifiedName = \case
@@ -87,6 +84,5 @@ free :: Type -> [TyVar]
 free ty = nub (go ty)
   where
     go (TypeVar var) = [var]
-    go (TypeSolved _) = []
     go (TypeConstr _ xs) = concatMap go xs
     go (TypeForall bounded ty') = go ty' \\ bounded
