@@ -38,6 +38,7 @@ dependencies:
 - raw-strings-qq
 - cmdargs
 - extra
+- split
 
 ghc-options:
 - -Wall

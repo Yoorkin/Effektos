@@ -178,7 +178,7 @@ typingProgram (AST.Program defs expr) =
   where
     freshTypes = [TypeVar (v : show (i :: Int)) | v <- ['a' .. 'z'], i <- [0 ..]]
     context = Context freshTypes []
-    table = 
+    -- table = 
  
 unify :: [Constraint] -> [Constraint] -> [Constraint]
 unify [] acc = acc
@@ -248,7 +248,7 @@ rewriteExpr subst = \case
 annoType :: SymbolTable -> AST.Anno -> Type
 annoType table (AST.AnnoVar var) = annoType table (AST.AnnoTypeConstr var [])
 annoType table (AST.AnnoArrow a b) = annoType table (AST.AnnoTypeConstr "Builtin.Arrow" [a,b])
-annoType table (AST.AnnoTuple xs) = annoType table (AST.AnnoTypeConstr ("Builtin.Tuple" ++ show (length xs)) xs
+annoType table (AST.AnnoTuple xs) = annoType table (AST.AnnoTypeConstr ("Builtin.Tuple" ++ show (length xs)) xs)
 annoType table (AST.AnnoTypeConstr constr annos) =
   case constr' of
     TypeConstrInfo name arity | arity == length annos -> TypeConstr name elems
