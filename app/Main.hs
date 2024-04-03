@@ -29,6 +29,9 @@ import qualified ASM.RTL as RTL
 import Prettyprinter
 import Util.Prettyprint (traceDocWith)
 import qualified Typing.Typer as Typer
+import qualified Syntax2.Parser
+import qualified Syntax2.Lexer
+import qualified Syntax2.Uniquify
 
 data Effektos = Compile
   { files :: [FilePath],
@@ -77,76 +80,80 @@ main = do
 pipeline :: CommandOptions -> CompEnvT IO ()
 pipeline options = do
   input <- lift $ readFile (head . files $ options)
-  when (show_input options) $ do
-    lift $ putStrLn "=========== Source ================"
-    lift $ putStrLn input
-  let tokens = tokenize input
-  when (debug_tokens options) $ do
-    lift $ putStrLn "=========== Tokens ================"
-    lift $ putStrLn (showTokens tokens)
-  let syntax = parse tokens
-  when (debug_syntax options) $ do
-    lift $ putStrLn "=========== Syntax ================"
-    lift $ pPrint syntax
-  lift $ putStrLn "=========== Typing ================"
-  pPrint $ Typer.typingProgram syntax
-  lambda <- hoistIO (SyntaxToLambda.transProg syntax)
-  when (debug_lambda options) $ do
-    lift $ putStrLn "=========== Lambda ================"
-    lift $ print lambda
-  lambda <- hoistIO (Uniquify.uniquifyTerm lambda)
-  when (debug_uniquify options) $ do
-    lift $ putStrLn "=========== Uniquified ================"
-    lift $ print lambda
-  cps <- hoistIO (LambdaToCPS.translate lambda)
-  when (debug_cps options) $ do
-    lift $ putStrLn "=========== CPS ================"
-    lift $ putStrLn (CPSPrinter.prettyCPS cps)
-  cps <-
-    if optimize options
-      then do
-        r <- hoistIO (Simp.simplify cps)
-        when (debug_simplify options) $ do
-          lift $ putStrLn "=========== Simplified CPS ================"
-          lift $ putStrLn (CPSPrinter.prettyCPS r)
-        pure r
-      else pure cps
-  clo <- hoistIO (ClosureConversion.translClosure cps)
-  when (debug_closure_conversion options) $ do
-    lift $ putStrLn "=========== Closure Passing Style ================"
-    lift $ putStrLn (CPSPrinter.prettyCPS clo)
-  let hoisted = hoisting clo
-  lift $ putStrLn "=========== Hosting ================"
-  lift $ print clo
-  lift $ putStrLn (CPSPrinter.prettyCPS hoisted)
-  cmm <- hoistIO (CPSToCMM.translate hoisted)
-  when (debug_cmm options) $ do
-    lift $ putStrLn "=========== CMM ================"
-    lift $ putStrLn (show cmm)
-  flat <- hoistIO (CPSToFlat.hoistToFlat clo)
-  when (debug_flat options) $ do
-    lift $ putStrLn "=========== Flat ================"
-    lift $ print flat
-  let js = FlatToJS.transl flat
-  when (debug_js options) $ do
-    lift $ putStrLn "=========== JS ================"
-    lift $ putStrLn js
-  let rtl = CPSToRTL.translate hoisted 
-  when (debug_rtl options) $ do
-    lift $ putStrLn "=========== RTL ================"
-    lift $ print rtl
-    lift $ putStrLn "----------- CFGs ---------------"
-    let cfgs = CFG.fromRTL rtl
-    lift $ pPrint cfgs
-    lift $ putStrLn "----------- Liveness -----------"
-    let livenessMap = Liveness.analyze cfgs
-    lift $ print livenessMap
-    let regs = [RTL.Reg i | i <- [1..30]]
-    let solutions = RegAlloc.allocation regs livenessMap 
-    lift $ putStrLn "----- Register Allocation ------"
-    lift $ print solutions
-    lift $ putStrLn "----- Rewrite by solutions ------"
-    let rtl' = RegAlloc.rewrite solutions rtl
-    lift $ print rtl'
-    lift $ print solutions
+  let tokens = Syntax2.Lexer.tokenize input
+  let ast = Syntax2.Parser.parse tokens
+  uni <- hoistIO (Syntax2.Uniquify.uniquifyProg ast)
+  lift $ pPrint uni
+  -- when (show_input options) $ do
+  --   lift $ putStrLn "=========== Source ================"
+  --   lift $ putStrLn input
+  -- let tokens = tokenize input
+  -- when (debug_tokens options) $ do
+  --   lift $ putStrLn "=========== Tokens ================"
+  --   lift $ putStrLn (showTokens tokens)
+  -- let syntax = parse tokens
+  -- when (debug_syntax options) $ do
+  --   lift $ putStrLn "=========== Syntax ================"
+  --   lift $ pPrint syntax
+  -- lift $ putStrLn "=========== Typing ================"
+  -- pPrint $ Typer.typingProgram syntax
+  -- lambda <- hoistIO (SyntaxToLambda.transProg syntax)
+  -- when (debug_lambda options) $ do
+  --   lift $ putStrLn "=========== Lambda ================"
+  --   lift $ print lambda
+  -- lambda <- hoistIO (Uniquify.uniquifyTerm lambda)
+  -- when (debug_uniquify options) $ do
+  --   lift $ putStrLn "=========== Uniquified ================"
+  --   lift $ print lambda
+  -- cps <- hoistIO (LambdaToCPS.translate lambda)
+  -- when (debug_cps options) $ do
+  --   lift $ putStrLn "=========== CPS ================"
+  --   lift $ putStrLn (CPSPrinter.prettyCPS cps)
+  -- cps <-
+  --   if optimize options
+  --     then do
+  --       r <- hoistIO (Simp.simplify cps)
+  --       when (debug_simplify options) $ do
+  --         lift $ putStrLn "=========== Simplified CPS ================"
+  --         lift $ putStrLn (CPSPrinter.prettyCPS r)
+  --       pure r
+  --     else pure cps
+  -- clo <- hoistIO (ClosureConversion.translClosure cps)
+  -- when (debug_closure_conversion options) $ do
+  --   lift $ putStrLn "=========== Closure Passing Style ================"
+  --   lift $ putStrLn (CPSPrinter.prettyCPS clo)
+  -- let hoisted = hoisting clo
+  -- lift $ putStrLn "=========== Hosting ================"
+  -- lift $ print clo
+  -- lift $ putStrLn (CPSPrinter.prettyCPS hoisted)
+  -- cmm <- hoistIO (CPSToCMM.translate hoisted)
+  -- when (debug_cmm options) $ do
+  --   lift $ putStrLn "=========== CMM ================"
+  --   lift $ putStrLn (show cmm)
+  -- flat <- hoistIO (CPSToFlat.hoistToFlat clo)
+  -- when (debug_flat options) $ do
+  --   lift $ putStrLn "=========== Flat ================"
+  --   lift $ print flat
+  -- let js = FlatToJS.transl flat
+  -- when (debug_js options) $ do
+  --   lift $ putStrLn "=========== JS ================"
+  --   lift $ putStrLn js
+  -- let rtl = CPSToRTL.translate hoisted 
+  -- when (debug_rtl options) $ do
+  --   lift $ putStrLn "=========== RTL ================"
+  --   lift $ print rtl
+  --   lift $ putStrLn "----------- CFGs ---------------"
+  --   let cfgs = CFG.fromRTL rtl
+  --   lift $ pPrint cfgs
+  --   lift $ putStrLn "----------- Liveness -----------"
+  --   let livenessMap = Liveness.analyze cfgs
+  --   lift $ print livenessMap
+  --   let regs = [RTL.Reg i | i <- [1..30]]
+  --   let solutions = RegAlloc.allocation regs livenessMap 
+  --   lift $ putStrLn "----- Register Allocation ------"
+  --   lift $ print solutions
+  --   lift $ putStrLn "----- Rewrite by solutions ------"
+  --   let rtl' = RegAlloc.rewrite solutions rtl
+  --   lift $ print rtl'
+  --   lift $ print solutions
 

@@ -40,7 +40,7 @@ data Name
 
 instance Show Name where
   show (SynName n) = n
-  show (UniName n i) = if i == 0 then n else n ++ show i
+  show (UniName n i) = n ++ show i
   show (GenName i) = "efk_" ++ show i
 
 instance Plated Name where

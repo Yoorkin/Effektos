@@ -40,6 +40,7 @@ $alpha [$alpha $digit \_ \']*   { tok $ \s -> if s `elem` keywords
 ","    { tok $ \s -> Symbol s }
 "|"    { tok $ \s -> Symbol s }
 "_"    { tok $ \s -> Symbol s }
+"."    { tok $ \s -> Symbol s }
 
 {
 
@@ -61,6 +62,7 @@ keywords =
   , "extern"
   , "effect"
   , "data"
+  , "forall"
   ]  
 
 

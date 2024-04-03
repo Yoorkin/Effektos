@@ -36,6 +36,7 @@ import qualified Syntax.Primitive as Primitive
     'extern' { (Token _ _ _ (Symbol "extern")) }
     'effect' { (Token _ _ _ (Symbol "effect")) }
     'data' { (Token _ _ _ (Symbol "data")) }
+    'forall' { (Token _ _ _ (Symbol "forall")) }
     '->' { (Token _ _ _ (Symbol "->"))}
     ARROW { (Token _ _ _ (Symbol "->"))}
     '>=' { (Token _ _ _ (Symbol ">="))}
@@ -91,12 +92,14 @@ endWith(x,end) : x end { $1 }
 
 Start : many(Definition) Expr EOF { Program $1 $2 }
 
-Definition : 'data' IDENT '=' option('|') sepBy1(Constructor,'|') { Data (synName $2) $5 }
+Definition : 'data' IDENT many1(IDENT) '=' option('|') sepBy1(Constructor,'|') { Datatype (synName $2) (map synName $3) $6 }
 
-Constructor : IDENT many(Anno)  { (synName $1,$2) }
+Constructor : IDENT many(Anno)  { Constructor (synName $1) $2 }
 
 Anno : IDENT  { AnnoVar (synName $1) }
+     | IDENT many1(Anno) { AnnoTypeConstr (synName $1) $2 }
      | Anno '->' Anno { AnnoArrow $1 $3 }
+     | 'forall' many1(IDENT) '.' Anno { AnnoForall (map synName $2) $4 }
      | '(' sepBy(Anno,',') ')' { case $2 of
                                      [] -> AnnoVar (synName "unit")
                                      [x] -> x
@@ -114,6 +117,7 @@ Op : '+' { $1 }
    | '==' {$1}
 
 Pattern : IDENT                                  { makePatConstr $1 [] }
+        | Pattern ':' Anno                       { PatAnno $1 $3 }
         | '(' IDENT many1(Pattern) ')'           { makePatConstr $2 $3 }
         | '_'                                    { PatWildCard }
         | Constant                               { PatConstant $1 }

@@ -9,8 +9,10 @@ copyright:           "2023 Yorkin"
 extra-source-files:
 - README.md
 - CHANGELOG.md
-- src/Lexer.x
-- src/Parser.y
+- src/Syntax/Lexer.x
+- src/Syntax/Parser.y
+- src/Syntax2/Lexer.x
+- src/Syntax2/Parser.y
 
 # Metadata used when publishing your package    
 # synopsis:            Short description of your package

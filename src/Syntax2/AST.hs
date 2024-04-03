@@ -5,8 +5,9 @@ module Syntax2.AST
     Fn,
     Expr (..),
     Pattern(..),
-    Definition(..),
-    Constr
+    Datatype(..),
+    Constr,
+    Constructor(..)
   )
 where
 
@@ -15,13 +16,18 @@ import Syntax.Primitive
 import Util.CompileEnv
 
 data Program
-  = Program [Definition] Expr
+  = Program [Datatype] Expr
   deriving (Show)
 
 type Constr = Name
+type TyVars = [Name]
 
-data Definition
-  = Data Name [(Constr, [Anno])]
+data Datatype 
+  = Datatype Name TyVars [Constructor]
+  deriving (Show)
+
+data Constructor 
+  = Constructor Name [Anno]
   deriving (Show)
 
 data Anno
@@ -29,6 +35,7 @@ data Anno
   | AnnoArrow Anno Anno
   | AnnoTuple [Anno]
   | AnnoTypeConstr Name [Anno]
+  | AnnoForall [Name] Anno
   deriving (Show)
 
 type Binder = Name
@@ -37,6 +44,7 @@ type Fn = (Pattern, Expr)
 
 data Pattern
   = PatVar Name
+  | PatAnno Pattern Anno
   | PatConstr Constr [Pattern]
   | PatConstant Constant
   | PatTuple [Pattern]
