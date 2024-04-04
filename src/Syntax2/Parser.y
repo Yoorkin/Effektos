@@ -90,11 +90,14 @@ sepBy(x,delim) : sepBy1(x,delim) { $1 }
 endWith(x,end) : x end { $1 }
 
 
-Start : many(Definition) Expr EOF { Program $1 $2 }
+Start : many(Decl) EOF { Program $1 }
 
-Definition : 'data' IDENT many1(IDENT) '=' option('|') sepBy1(Constructor,'|') { Datatype (synName $2) (map synName $3) $6 }
+Decl : 'data' IDENT many1(IDENT) '=' option('|') sepBy1(Constructor,'|') 
+                                       { Datatype (synName $2) (map synName $3) $6 }
+     | 'let' IDENT '=' Expr            { TopValue (synName $2) Nothing $4 }                                       
+     | 'let' IDENT ':' Anno '=' Expr   { TopValue (synName $2) (Just $4) $6 }
 
-Constructor : IDENT many(Anno)  { Constructor (synName $1) $2 }
+Constructor : IDENT many(Anno)  { (synName $1, $2) }
 
 Anno : IDENT  { AnnoVar (synName $1) }
      | IDENT many1(Anno) { AnnoTypeConstr (synName $1) $2 }
@@ -118,7 +121,8 @@ Op : '+' { $1 }
 
 Pattern : IDENT                                  { makePatConstr $1 [] }
         | Pattern ':' Anno                       { PatAnno $1 $3 }
-        | '(' IDENT many1(Pattern) ')'           { makePatConstr $2 $3 }
+        | IDENT many1(Pattern)                   { makePatConstr $1 $2 }
+        | '(' Pattern ')'                        { $2 }
         | '_'                                    { PatWildCard }
         | Constant                               { PatConstant $1 }
         | '(' sepBy(Pattern,',') ')'             { case $2 of 

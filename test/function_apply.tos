@@ -1,2 +1,16 @@
 
-let n = 5 + 2 in let f = fun x -> x + n in f (f 114)
+data List a = Nil | Cons a (List a)
+
+let n = 5 + 2
+
+let f : Int -> Int = fun x -> x + n
+
+let height : forall a . List a -> Int
+           = fun x -> case x of
+                      | Nil -> 0
+                      | Cons x xs -> height xs
+
+let list : List Int = Cons 1 (Cons 2 (Cons 3 Nil))
+
+let main = f (f (height list))
+

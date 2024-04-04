@@ -14,15 +14,24 @@ import Util.CompileEnv
 
 type Subst = Map.Map Name Name
 
+append :: Name -> Name -> Subst -> Subst
+append = Map.insert
+
+appends :: [Name] -> [Name] -> Subst -> Subst
+appends _ [] st = st
+appends [] _ st = st
+appends (x : xs) (y : ys) st = appends xs ys (append x y st)
+
+subst :: (Ord k) => k -> Map.Map k k -> k
+subst old = fromMaybe old . Map.lookup old
+
 uniquifyPatterns :: Subst -> [Pattern] -> CompEnv (Subst, [Pattern])
-uniquifyPatterns st pats =
-  foldlM
+uniquifyPatterns st = foldlM
     ( \(st1, acc) pat -> do
         (st2, pat') <- uniquifyPattern st1 pat
         return (st2, pat' : acc)
     )
     (st, [])
-    pats
 
 uniquifyPattern :: Subst -> Pattern -> CompEnv (Subst, Pattern)
 uniquifyPattern st (PatVar n) = do
@@ -83,16 +92,6 @@ uniquify _ expr@(Const {}) = return expr
 uniquify st (Sequence e1 e2) = Sequence <$> uniquify st e1 <*> uniquify st e2
 uniquify _ Hole = return Hole
 
-append :: Name -> Name -> Subst -> Subst
-append = Map.insert
-
-appends :: [Name] -> [Name] -> Subst -> Subst
-appends _ [] st = st
-appends [] _ st = st
-appends (x : xs) (y : ys) st = appends xs ys (append x y st)
-
-subst :: (Ord k) => k -> Map.Map k k -> k
-subst old = fromMaybe old . Map.lookup old
 
 uniquifyAnno :: Subst -> Anno -> CompEnv Anno
 uniquifyAnno st = go
@@ -108,33 +107,30 @@ uniquifyAnno st = go
       anno' <- uniquifyAnno st' anno
       return (AnnoForall ns' anno')
 
-uniquifyDatatypes :: Subst -> [Datatype] -> CompEnv (Subst, [Datatype])
-uniquifyDatatypes st datatypes = do
-  dataNames' <- mapM uniName dataNames 
-  let st' = appends dataNames dataNames' st
-  datatypes' <- processDatatypes st' datatypes 
-  return (st', datatypes')
+uniquifyDecl :: Subst -> Decl -> CompEnv Decl
+uniquifyDecl st (TopValue n anno expr) =
+  TopValue (subst n st) <$> mapM (uniquifyAnno st) anno <*> uniquify st expr
+uniquifyDecl st (Datatype n quants constrs) = do
+  quants' <- mapM uniName quants
+  let st' = appends quants quants' st
+  constrs' <- processConstrs st' constrs
+  return (Datatype (subst n st') quants' constrs')
   where
-    dataNames = concatMap (\(Datatype n _ constrs) -> n : map (\(Constructor n _) -> n) constrs) datatypes
+    processConstrs st1 = mapM (processConstr st1)
 
-    processDatatypes st = mapM (processDatatype st)
+    processConstr st1 (constr, annos) =
+      (subst constr st1,) <$> mapM (uniquifyAnno st) annos
 
-    processDatatype st (Datatype n quants constrs) = do
-      quants' <- mapM uniName quants
-      let st' = appends quants quants' st
-      constrs' <- processConstrs st' constrs
-      return (Datatype (subst n st') quants' constrs')
-
-    processConstrs st = mapM (processConstr st)
-
-    processConstr st (Constructor n annos) = 
-      Constructor (subst n st) <$> mapM (uniquifyAnno st) annos
-
+scanDeclNames :: [Decl] -> [Name]
+scanDeclNames = concatMap go
+  where
+    go (TopValue n _ _) = [n]
+    go (Datatype n _ constrs) = n : map fst constrs
 
 uniquifyProg :: Program -> CompEnv Program
-uniquifyProg (Program datatypes expr) = do
-  (st', datatypes') <- uniquifyDatatypes st datatypes
-  expr' <- uniquify st' expr
-  return (Program datatypes' expr')
-  where
-    st = Map.empty
+uniquifyProg (Program decls) = do
+  let topNames = scanDeclNames decls
+  topNames' <- mapM uniName topNames
+  let st = Map.fromList (zip topNames topNames')
+  decls' <- mapM (uniquifyDecl st) decls
+  return (Program decls')

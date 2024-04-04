@@ -5,9 +5,8 @@ module Syntax2.AST
     Fn,
     Expr (..),
     Pattern(..),
-    Datatype(..),
-    Constr,
-    Constructor(..)
+    Decl(..),
+    Constr
   )
 where
 
@@ -15,19 +14,16 @@ import Syntax.Constant
 import Syntax.Primitive
 import Util.CompileEnv
 
-data Program
-  = Program [Datatype] Expr
+newtype Program
+  = Program [Decl]  
   deriving (Show)
 
 type Constr = Name
 type TyVars = [Name]
 
-data Datatype 
-  = Datatype Name TyVars [Constructor]
-  deriving (Show)
-
-data Constructor 
-  = Constructor Name [Anno]
+data Decl
+  = Datatype Name TyVars [(Constr, [Anno])]
+  | TopValue Name (Maybe Anno) Expr
   deriving (Show)
 
 data Anno
