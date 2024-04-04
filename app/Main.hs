@@ -84,6 +84,9 @@ pipeline options = do
   let ast = Syntax2.Parser.parse tokens
   uni <- hoistIO (Syntax2.Uniquify.uniquifyProg ast)
   lift $ pPrint uni
+  lift $ putStrLn "=============== typing ================="
+  let typedtree = Typer.typingProg ast
+  lift $ pPrint typedtree
   -- when (show_input options) $ do
   --   lift $ putStrLn "=========== Source ================"
   --   lift $ putStrLn input

@@ -6,7 +6,8 @@ module Typing.Builtin where
 import Syntax.Constant as Constant
 import Syntax.Primitive as Op
 import Typing.QualifiedNames
-import Typing.Symbol
+import Typing.Typedtree
+import Util.CompileEnv (Name)
 
 boolType, intType, unitType :: Type
 boolType = TypeConstr boolName []
@@ -19,8 +20,8 @@ arrowType a b = TypeConstr arrowName [a, b]
 tupleType :: [Type] -> Type
 tupleType tys = TypeConstr (tupleTypeConstrName (length tys)) tys
 
-builtinSymbols :: [(QualifiedName, Symbol)]
-builtinSymbols =
+builtinTypes :: [(Name, TypeInfo)]
+builtinTypes =
   [ (boolName, TypeConstrInfo boolName 0),
     (intName, TypeConstrInfo intName 0),
     (unitName, TypeConstrInfo unitName 0),

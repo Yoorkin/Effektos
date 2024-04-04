@@ -4,17 +4,24 @@ module Typing.Typedtree where
 import Syntax.Constant
 import Syntax.Primitive
 import Typing.Symbol
+import Util.CompileEnv
+import Data.Map (Map)
+import Data.List (nub, (\\))
 
-newtype Program = Program Expr deriving Show
+newtype Program 
+  = Program [Decl] 
+  deriving Show
 
-type Constr = String
+data Decl = TopBinding Name Expr deriving Show
 
-type Binder = String
+type Constr = Name
+
+type Binder = Name
 
 type Fn = (Pattern, Expr)
 
 data Pattern
-  = PatVar Type String
+  = PatVar Type Name
   | PatConstr Type Constr [Pattern]
   | PatConstant Type Constant
   | PatTuple Type [Pattern]
@@ -23,7 +30,7 @@ data Pattern
   deriving (Show)
 
 data Expr
-  = Var Type String
+  = Var Type Name
   | Fun Type Pattern Expr
   | App Type Expr Expr
   | Let Type Pattern Expr Expr
@@ -33,12 +40,49 @@ data Expr
   | Tuple Type [Expr]
   | Prim Type Primitive [Expr]
   | Const Type Constant
-  | Sequence Type Expr Expr
+  | Seq Type Expr Expr
   | Hole Type
-  | Handle Type Expr [(Pattern, Expr)]
-  | Resume Type Expr Expr
-  | Raise Type String Expr
   deriving (Show)
+
+type Arity = Int
+
+data TyVar  
+  = Unsolved Name
+  | Solved Name
+  deriving (Show, Eq, Ord)
+
+data Type
+  = TypeVar TyVar
+  | TypeConstr Name [Type]
+  | TypeForall [TyVar] Type
+  deriving (Show, Eq, Ord)
+
+
+data DatatypeInfo
+  = DataTypeInfo Name [Name] [Name]
+  deriving (Show)
+
+data TypeInfo
+  = TypeConstrInfo Name Arity
+
+data ValueInfo
+  = ValueInfo Name Type
+  | ConstrInfo Name Arity Type
+  | DummyInfo 
+
+data Table
+  = Table
+  { typeMap :: Map Name TypeInfo,
+    valueMap :: Map Name ValueInfo,
+    datatypeMap :: Map Name DatatypeInfo
+  }
+
+free :: Type -> [TyVar]
+free ty = nub (go ty)
+  where
+    go (TypeVar var) = [var]
+    go (TypeConstr _ xs) = concatMap go xs
+    go (TypeForall bounded ty') = go ty' \\ bounded
 
 typeOfPat :: Pattern -> Type
 typeOfPat = \case
@@ -57,6 +101,9 @@ typeOfExpr = \case
   (Tuple ty _) -> ty
   (Prim ty _ _) -> ty
   (Const ty _) -> ty
-  (Sequence ty _ _) -> ty
+  (Seq ty _ _) -> ty
   (Hole ty) -> ty
-  _ -> error ""
+
+isUnsolved :: TyVar -> Bool
+isUnsolved (Unsolved _) = True
+isUnsolved (Solved _) = False

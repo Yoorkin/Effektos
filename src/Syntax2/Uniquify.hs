@@ -38,7 +38,7 @@ uniquifyPattern st (PatVar n) = do
   n' <- uniName n
   return (append n n' st, PatVar n')
 uniquifyPattern st (PatConstr constr pats) = do
-  constr' <- uniName constr
+  let constr' = subst constr st
   (st', pats') <- uniquifyPatterns st pats
   return (st', PatConstr constr' pats')
 uniquifyPattern st pat@(PatConstant {}) = return (st, pat)
@@ -119,7 +119,7 @@ uniquifyDecl st (Datatype n quants constrs) = do
     processConstrs st1 = mapM (processConstr st1)
 
     processConstr st1 (constr, annos) =
-      (subst constr st1,) <$> mapM (uniquifyAnno st) annos
+      (subst constr st1,) <$> mapM (uniquifyAnno st1) annos
 
 scanDeclNames :: [Decl] -> [Name]
 scanDeclNames = concatMap go

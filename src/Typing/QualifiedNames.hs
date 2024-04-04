@@ -1,12 +1,12 @@
 module Typing.QualifiedNames where
-import Typing.Symbol
+import Util.CompileEnv
 
-boolName, intName, unitName, arrowName :: QualifiedName
-boolName = qualified "Builtin.Bool"
-intName = qualified "Builtin.Int"
-unitName = qualified "Builtin.Unit"
-arrowName = qualified "Builtin.Arrow"
+boolName, intName, unitName, arrowName :: Name
+boolName = synName "Bool"
+intName = synName "Int"
+unitName = synName "Unit"
+arrowName = synName "Arrow"
 
 
-tupleTypeConstrName :: Int -> QualifiedName
-tupleTypeConstrName i = qualified $ "Builtin.Tuple" ++ show i
+tupleTypeConstrName :: Int -> Name
+tupleTypeConstrName i = synName $ "Tuple" ++ show i

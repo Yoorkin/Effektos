@@ -1,32 +1,33 @@
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
-module Typing.Typer where
+module Typing.Typer (typingProg) where
 
-import Control.Monad (replicateM)
+import Control.Monad (mapAndUnzipM, replicateM, zipWithM_)
 import Control.Monad.State
 import Data.Foldable (foldlM)
-import Data.Map.Strict (Map, (!))
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Data.Maybe (fromJust)
-import qualified Syntax.AST as AST
+import Data.Maybe (catMaybes, mapMaybe)
+import qualified Syntax2.AST as AST
 import Typing.Builtin
-import qualified Typing.Builtin as Builtin
-import Typing.Symbol
-import qualified Typing.Symbol as Symbol
+import Typing.QualifiedNames
 import Typing.Typedtree
+import Util.CompileEnv
 
-type Bindings = Map String Type
+type TypeBindings = Map Name Type
 
 type Constraint = (Type, Type)
 
 data Context = Context
   { freshTypeList :: [Type],
-    constraints :: [Constraint]
+    constraints :: [Constraint],
+    typeInfoMap :: Map Name TypeInfo,
+    valueInfoMap :: Map Name ValueInfo
   }
 
 instance Show Context where
-  show (Context _ constraints) = show constraints
+  show = show . constraints
 
 freshType :: State Context Type
 freshType =
@@ -39,7 +40,18 @@ constraint :: Type -> Type -> State Context ()
 constraint a b = modify $ \ctx ->
   ctx {constraints = (a, b) : constraints ctx}
 
-typingPattern :: Bindings -> AST.Pattern -> State Context (Bindings, Pattern)
+findTypeInfo :: Name -> State Context (Maybe TypeInfo)
+findTypeInfo n = gets (Map.lookup n . typeInfoMap)
+
+findValueInfo :: Name -> State Context (Maybe ValueInfo)
+findValueInfo n = gets (Map.lookup n . valueInfoMap)
+
+insertValueInfo :: Name -> ValueInfo -> State Context ()
+insertValueInfo n v = modify $ \ctx ->
+  let info = valueInfoMap ctx
+   in ctx {valueInfoMap = Map.insert n v info}
+
+typingPattern :: TypeBindings -> AST.Pattern -> State Context (TypeBindings, Pattern)
 typingPattern bindings (AST.PatVar n) = do
   ty <- freshType
   return (Map.insert n ty bindings, PatVar ty n)
@@ -52,17 +64,23 @@ typingPattern bindings (AST.PatConstr constr pats) = do
       )
       (bindings, [])
       pats
-  let constrTy = bindings ! constr
+  info <- findValueInfo constr
+  let constrTy = case info of
+        Just (ConstrInfo _ _ ty) -> ty
+        _ -> error $ "constructor '" ++ show constr ++ "' not found"
   let (paramTys, retTy) = splitArrowType constrTy
-  sequence $ zipWith constraint paramTys (map typeOfPat pats')
+  zipWithM_ constraint paramTys (map typeOfPat pats')
   return (bindings', PatConstr retTy constr pats')
 typingPattern bindings (AST.PatConstant c) =
   let ty = typeOfConstant c
    in return (bindings, PatConstant ty c)
 
-typingExpr :: Bindings -> AST.Expr -> State Context Expr
+typingExpr :: TypeBindings -> AST.Expr -> State Context Expr
 typingExpr bindings (AST.Var n) =
-  let ty = bindings ! n in return (Var ty n)
+  let ty = case Map.lookup n bindings of
+        Just x -> x
+        Nothing -> error $ "type of var '" ++ show n ++ "' not found"
+   in return (Var ty n)
 typingExpr bindings (AST.Fun pat body) =
   do
     (bindings', pat') <- typingPattern bindings pat
@@ -92,7 +110,7 @@ typingExpr bindings (AST.Fix binders fns expr) =
     let newBindings = Map.fromList (zip binders tys)
     let bindings' = newBindings `Map.union` bindings
     fns' <- mapM (typingFn bindings') fns
-    sequence $ zipWith constraint tys (map typeOfFn fns')
+    zipWithM_ constraint tys (map typeOfFn fns')
     expr' <- typingExpr bindings' expr
     let ty = typeOfExpr expr'
     return (Fix ty binders fns' expr')
@@ -116,7 +134,7 @@ typingExpr bindings (AST.If cond ifso ifnot) =
 typingExpr bindings (AST.Match cond pats exprs) =
   do
     cond' <- typingExpr bindings cond
-    (pats', exprs') <- unzip <$> mapM (typingCase bindings) (zip pats exprs)
+    (pats', exprs') <- mapAndUnzipM (typingCase bindings) (zip pats exprs)
     let patTys = map typeOfPat pats'
     let condTy = typeOfExpr cond'
     mapM_ (constraint condTy) patTys
@@ -141,7 +159,7 @@ typingExpr bindings (AST.Prim prim args) = do
     let primTy = typeOfPrim prim
     let argTys = map typeOfExpr args'
     let (paramTys, retTy) = splitArrowType primTy
-    sequence $ zipWith constraint argTys paramTys
+    zipWithM_ constraint argTys paramTys
     return (Prim retTy prim args')
 typingExpr _ (AST.Const c) =
   let ty = typeOfConstant c
@@ -152,40 +170,111 @@ typingExpr bindings (AST.Sequence expr1 expr2) =
     expr2' <- typingExpr bindings expr2
     constraint (typeOfExpr expr1') unitType
     let ty = typeOfExpr expr2'
-    return (Sequence ty expr1' expr2')
+    return (Seq ty expr1' expr2')
 typingExpr _ AST.Hole =
   Hole <$> freshType
 typingExpr _ _ = error ""
 
-definitionSymbols :: SymbolTable -> AST.Definition -> [Symbol]
-definitionSymbols table (AST.Data name constrs) = dataSym : constrSyms
-  where
-    dataSym = DataTypeInfo (qualified name) (map qualifiedName constrSyms)
-    processConstr (constr, annos) =
-      DataConstrInfo (qualified constr) (length annos) (map (annoType table) annos) (qualified name)
-    constrSyms = map processConstr constrs
-definitionSymbols table (AST.Effect name anno) = effectSym : constrSyms
-  where
-    effectSym = EffectTypeInfo (qualified name) (map qualifiedName constrSyms)
-    constrSyms = [EffectConstrInfo (qualified name) 1 [annoType table anno] (qualified name)]
+typingAnno :: TypeBindings -> AST.Anno -> State Context Type
+typingAnno bs (AST.AnnoVar var) = typingAnno bs (AST.AnnoTypeConstr var [])
+typingAnno bs (AST.AnnoArrow a b) = typingAnno bs (AST.AnnoTypeConstr arrowName [a, b])
+typingAnno bs (AST.AnnoTuple xs) = typingAnno bs (AST.AnnoTypeConstr (tupleTypeConstrName (length xs)) xs)
+typingAnno bs (AST.AnnoTypeConstr constr annos) = do
+  constr' <- findTypeInfo constr
+  elems <- mapM (typingAnno bs) annos
+  case constr' of
+    Just (TypeConstrInfo n arity) | arity == length annos -> return (TypeConstr n elems)
+    Nothing -> error $ "type " ++ show constr ++ " not found"
 
-typingProgram :: AST.Program -> Program
-typingProgram (AST.Program defs expr) =
-  let (expr', context') = runState (typingExpr Map.empty expr) context
-      solutions = unify (constraints context') []
-      rewritten = rewriteExpr (Map.fromList solutions) expr'
-   in Program rewritten
+typingDecl :: TypeBindings -> AST.Decl -> State Context (Maybe Decl)
+typingDecl _ (AST.Datatype {}) = return Nothing
+typingDecl bindings (AST.TopValue n anno expr) =
+  Just
+    <$> case anno of
+      Nothing -> TopBinding n <$> typingExpr bindings expr
+      Just anno' -> do
+        expr' <- typingExpr bindings expr
+        ty <- typingAnno bindings anno'
+        let exprTy = typeOfExpr expr'
+        constraint ty exprTy
+        return (TopBinding n expr')
+
+scanTypes :: [AST.Decl] -> [(Name, TypeInfo)]
+scanTypes = mapMaybe go
   where
-    freshTypes = [TypeVar (v : show (i :: Int)) | v <- ['a' .. 'z'], i <- [0 ..]]
-    context = Context freshTypes []
-    -- table = 
- 
+    go (AST.Datatype n quants _) = Just (n, TypeConstrInfo n (length quants))
+    go _ = Nothing
+
+-- scanTopValue :: Map Name TypeInfo -> [AST.Decl] -> [(Name, ValueInfo)]
+-- scanTopValue typeInfoMap = concatMap go
+--   where
+--     go (AST.TopValue n _ _) = [(n, DummyInfo)]
+--     go (AST.Datatype _ _ constrs) = map (\(n, _) -> (n, ConstrInfo))
+
+-- scanDecls :: [AST.Decl] -> Table
+-- scanDecls decls = Table (Map.fromList (types ++ builtinTypes)) (Map.fromList values) (Map.fromList datatypes)
+--   where
+--     types = catMaybes $ flip map decls $ \case
+--       (AST.Datatype n quants _) -> Just (n, TypeConstrInfo n (length quants))
+--       _ -> Nothing
+
+--     datatypes = catMaybes $ flip map decls $ \case
+--       (AST.Datatype n quants constrs) -> Just (n, DataTypeInfo n quants (map fst constrs))
+--       _ -> Nothing
+
+--     values = flip concatMap decls $ \case
+--       (AST.TopValue n _ _) -> [(n, DummyInfo)]
+--       (AST.Datatype _ _ constrs) -> map (\(name, _) -> (name, DummyInfo)) constrs
+
+makeConstrTy :: [TyVar] -> [Type] -> Type -> Type
+makeConstrTy quants =
+  case quants of
+    [] -> go
+    _ ->
+      -- (TypeForall quants .) . go
+      \x y -> TypeForall quants (go x y)
+  where
+    go [param] ret = TypeConstr arrowName [param, ret]
+    go (param : ps) ret = TypeConstr arrowName [param, go ps ret]
+
+typingDatatype :: AST.Decl -> State Context ()
+typingDatatype (AST.Datatype n quants constrs) = do
+  mapM_ typingConstr constrs
+  where
+    quants' = map Unsolved quants
+    dataTy = TypeConstr n (map TypeVar quants')
+    typingConstr (constr, annos) = do
+      argTys <- mapM (typingAnno Map.empty) annos
+      let ty = makeConstrTy quants' argTys dataTy
+      let constrInfo = ConstrInfo constr (length annos) ty
+      insertValueInfo constr constrInfo
+
+typingProg' :: TypeBindings -> AST.Program -> State Context Program
+typingProg' bindings (AST.Program decls) = do
+  let datatypeDecls = filter (\case (AST.Datatype {}) -> True; _ -> False) decls
+  mapM_ typingDatatype datatypeDecls
+  decls' <- mapM (typingDecl bindings) decls
+  return (Program (catMaybes decls'))
+
+typingProg :: AST.Program -> Program
+typingProg prog@(AST.Program decls) =
+  let (prog', context') = runState (typingProg' bindings prog) context
+      solutions = unify (constraints context') []
+      rewritten = rewriteProg (Map.fromList solutions) prog'
+   in rewritten
+  where
+    typeInfoMap = Map.fromList (scanTypes decls ++ builtinTypes)
+    valueInfoMap = Map.empty
+    bindings = Map.empty
+    freshTypes = [TypeVar . Unsolved $ synName (v : show (i :: Int)) | v <- ['a' .. 'z'], i <- [0 ..]]
+    context = Context freshTypes [] typeInfoMap valueInfoMap
+
 unify :: [Constraint] -> [Constraint] -> [Constraint]
 unify [] acc = acc
 unify (c@(a, b) : cs) acc = case c of
   (TypeVar x, TypeVar y)
     | x == y -> unify cs acc
-    | head x /= '\'' && head y == '\'' -> unify ((b, a) : cs) acc
+    | isUnsolved x && not (isUnsolved y) -> unify ((b, a) : cs) acc
   (TypeVar x, _)
     | x `notElem` free b ->
         let p = rewriteConstraint a b in unify (p cs) ((a, b) : p acc)
@@ -224,6 +313,11 @@ rewritePattern subst = \case
     goTy = rewriteType subst
     go = rewritePattern subst
 
+rewriteProg :: Map Type Type -> Program -> Program
+rewriteProg subst (Program decls) = Program $ map go decls
+  where
+    go (TopBinding n e) = TopBinding n (rewriteExpr subst e)
+
 rewriteExpr :: Map Type Type -> Expr -> Expr
 rewriteExpr subst = \case
   (Var ty str) -> Var (goTy ty) str
@@ -236,23 +330,10 @@ rewriteExpr subst = \case
   (Tuple ty elems) -> Tuple (goTy ty) (map go elems)
   (Prim ty op xs) -> Prim (goTy ty) op (map go xs)
   (Const ty c) -> Const (goTy ty) c
-  (Sequence ty a b) -> Sequence (goTy ty) (go a) (go b)
+  (Seq ty a b) -> Seq (goTy ty) (go a) (go b)
   (Hole ty) -> Hole (goTy ty)
-  _ -> error ""
   where
     go = rewriteExpr subst
     goTy = rewriteType subst
     goPat = rewritePattern subst
     goFns = map $ \(pat, body) -> (goPat pat, go body)
-
-annoType :: SymbolTable -> AST.Anno -> Type
-annoType table (AST.AnnoVar var) = annoType table (AST.AnnoTypeConstr var [])
-annoType table (AST.AnnoArrow a b) = annoType table (AST.AnnoTypeConstr "Builtin.Arrow" [a,b])
-annoType table (AST.AnnoTuple xs) = annoType table (AST.AnnoTypeConstr ("Builtin.Tuple" ++ show (length xs)) xs)
-annoType table (AST.AnnoTypeConstr constr annos) =
-  case constr' of
-    TypeConstrInfo name arity | arity == length annos -> TypeConstr name elems
-    _ -> error ""
-  where
-    constr' = fromJust (Symbol.lookupTypeInfo (qualified constr) table)
-    elems = map (annoType table) annos
