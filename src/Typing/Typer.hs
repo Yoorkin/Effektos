@@ -15,7 +15,8 @@ import Typing.QualifiedNames
 import Typing.Typedtree
 import Common.CompileEnv
 import Common.Name
-import Debug.Trace (traceM)
+import Debug.Trace (traceM, traceShowId, traceWith)
+import Debug.Pretty.Simple (pTraceShow)
 
 type TypeBindings = Map Name Type
 
@@ -62,7 +63,7 @@ typingPattern bindings (AST.PatConstr constr pats) = do
     foldlM
       ( \(bindings1, pats') pat -> do
           (bindings2, pat') <- typingPattern bindings1 pat
-          return (bindings2, pat' : pats')
+          return (bindings2, pats' ++ [pat'])
       )
       (bindings, [])
       pats
@@ -203,17 +204,21 @@ typingAnno bs (AST.AnnoTypeConstr constr annos) = do
 
 typingDecl :: TypeBindings -> AST.Decl -> State Context (Maybe Decl)
 typingDecl _ (AST.Datatype {}) = return Nothing
-typingDecl bindings (AST.TopValue n anno expr) =
+typingDecl bindings (AST.TopValue n anno expr) = do
+    expr' <- typingExpr bindings expr
+    let exprTy = typeOfExpr expr'
     case anno of
-      Nothing -> do
-        expr' <- typingExpr bindings expr
-        return (Just . TopBinding n $ expr')
+      Nothing -> return ()
       Just anno' -> do
-        expr' <- typingExpr bindings expr
         ty <- typingAnno bindings anno'
-        let exprTy = typeOfExpr expr'
         constraint ty exprTy
-        return (Just $ TopBinding n expr')
+        return ()
+    info <- findValueInfo n
+    let ty = case info of
+                Just (ValueInfo _ ty) -> ty
+                Just (ConstrInfo _ _ ty) -> ty
+    constraint ty exprTy
+    return (Just $ TopBinding n expr')
 
 scanTypes :: [AST.Decl] -> [(Name, TypeInfo)]
 scanTypes = mapMaybe go
@@ -262,7 +267,10 @@ typingProg prog@(AST.Program decls) =
   let (prog', context') = runState (typingProg' bindings prog) context
       solutions = unify (constraints context') []
       rewritten = rewriteProg (Map.fromList solutions) prog'
-   in rewritten
+   in 
+      --pTraceShow prog' $
+      --pTraceShow (constraints context') 
+      rewritten
   where
     typeInfoMap = Map.fromList (scanTypes decls ++ builtinTypes)
     valueInfoMap = Map.empty

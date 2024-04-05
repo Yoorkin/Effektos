@@ -11,8 +11,10 @@ import Control.Comonad.Identity
 import Control.Monad.Morph (MFunctor, hoist)
 import Control.Monad.State.Lazy (StateT, evalStateT, state)
 
-newtype UUID = UUID Int deriving (Show, Eq, Ord)
+newtype UUID = UUID Int deriving (Eq, Ord)
 
+instance Show UUID where
+  show (UUID i) = "_" ++ show i
 
 data CompCtx
   = Compiling

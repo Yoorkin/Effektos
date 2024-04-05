@@ -3,7 +3,7 @@ data IntList = Nil | Cons Int IntList
 
 let n = 5 + 2
 
-let f : Int -> Int = fun x -> x + n
+let f = fun x -> x + n
 
 let height : IntList -> Int
            = fun x -> case x of
