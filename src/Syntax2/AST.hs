@@ -5,7 +5,8 @@ module Syntax2.AST
     Fn,
     Expr (..),
     Pattern(..),
-    Decl(..),
+    Datatype(..),
+    TopBinding(..),
     Constr
   )
 where
@@ -15,16 +16,19 @@ import Syntax.Primitive
 import Common.CompileEnv
 import Common.Name
 
-newtype Program
-  = Program [Decl]  
+data Program
+  = Program [Datatype] [TopBinding]   
   deriving (Show)
 
 type Constr = Name
 type TyVars = [Name]
 
-data Decl
+data Datatype
   = Datatype Name TyVars [(Constr, [Anno])]
-  | TopValue Name (Maybe Anno) Expr
+  deriving (Show)
+
+data TopBinding
+  = TopBinding Name (Maybe Anno) Expr
   deriving (Show)
 
 data Anno

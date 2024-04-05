@@ -91,12 +91,12 @@ sepBy(x,delim) : sepBy1(x,delim) { $1 }
 endWith(x,end) : x end { $1 }
 
 
-Start : many(Decl) EOF { Program $1 }
+Start : many(Decl) EOF { let (datatypes, bindings) = groupDecls $1 in Program datatypes bindings }
 
 Decl : 'data' IDENT many(IDENT) '=' option('|') sepBy1(Constructor,'|') 
-                                       { Datatype (synName $2) (map synName $3) $6 }
-     | 'let' IDENT '=' Expr            { TopValue (synName $2) Nothing $4 }                                       
-     | 'let' IDENT ':' Anno '=' Expr   { TopValue (synName $2) (Just $4) $6 }
+                                       { DeclDatatype $ Datatype (synName $2) (map synName $3) $6 }
+     | 'let' IDENT '=' Expr            { DeclTopBinding $ TopBinding (synName $2) Nothing $4 }                                       
+     | 'let' IDENT ':' Anno '=' Expr   { DeclTopBinding $ TopBinding (synName $2) (Just $4) $6 }
 
 Constructor : IDENT many(SimpleAnno)  { (synName $1, $2) }
 

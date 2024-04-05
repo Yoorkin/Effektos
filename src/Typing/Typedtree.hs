@@ -8,16 +8,14 @@ import Prettyprinter
 import Syntax.Constant
 import Syntax.Primitive
 import Typing.QualifiedNames (arrowName)
-import Typing.Symbol
-import Common.CompileEnv
 import Common.Name
 import Util.Prettyprint (render)
 
 newtype Program
-  = Program [Decl]
+  = Program [TopBinding]
   deriving (Show)
 
-data Decl = TopBinding Name Expr deriving (Show)
+data TopBinding = TopBinding Name Expr deriving (Show)
 
 type Constr = Name
 

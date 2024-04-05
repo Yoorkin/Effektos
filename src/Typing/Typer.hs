@@ -202,29 +202,12 @@ typingAnno bs (AST.AnnoTypeConstr constr annos) = do
         Just (TypeConstrInfo n arity) | arity == length annos -> return (TypeConstr n elems)
         _ -> error $ "type " ++ show constr ++ " not found"
 
-typingDecl :: TypeBindings -> AST.Decl -> State Context (Maybe Decl)
-typingDecl _ (AST.Datatype {}) = return Nothing
-typingDecl bindings (AST.TopValue n anno expr) = do
-    expr' <- typingExpr bindings expr
-    let exprTy = typeOfExpr expr'
-    case anno of
-      Nothing -> return ()
-      Just anno' -> do
-        ty <- typingAnno bindings anno'
-        constraint ty exprTy
-        return ()
-    info <- findValueInfo n
-    let ty = case info of
-                Just (ValueInfo _ ty) -> ty
-                Just (ConstrInfo _ _ ty) -> ty
-    constraint ty exprTy
-    return (Just $ TopBinding n expr')
 
-scanTypes :: [AST.Decl] -> [(Name, TypeInfo)]
-scanTypes = mapMaybe go
+scanTypes :: [AST.Datatype] -> [(Name, TypeInfo)]
+scanTypes = map go
   where
-    go (AST.Datatype n quants _) = Just (n, TypeConstrInfo n (length quants))
-    go _ = Nothing
+    go (AST.Datatype n quants _) = (n, TypeConstrInfo n (length quants))
+
 
 makeConstrTy :: [TyVar] -> [Type] -> Type -> Type
 makeConstrTy quants =
@@ -238,11 +221,13 @@ makeConstrTy quants =
     go [param] ret = TypeConstr arrowName [param, ret]
     go (param : ps) ret = TypeConstr arrowName [param, go ps ret]
 
-scanTopValues :: AST.Decl -> State Context ()
-scanTopValues (AST.TopValue n _ _) = do
+scanTopBinding :: AST.TopBinding -> State Context ()
+scanTopBinding (AST.TopBinding n _ _) = do
   ty <- freshType 
   insertValueInfo n (ValueInfo n ty)
-scanTopValues (AST.Datatype n quants constrs) = do
+
+scanDatatype :: AST.Datatype -> State Context ()
+scanDatatype (AST.Datatype n quants constrs) = do
   mapM_ typingConstr constrs
   where
     quantTys = map (TypeVar . Unsolved) quants
@@ -254,16 +239,32 @@ scanTopValues (AST.Datatype n quants constrs) = do
       let constrInfo = ConstrInfo constr (length annos) ty
       insertValueInfo constr constrInfo
 
+typingDecl :: TypeBindings -> AST.TopBinding -> State Context TopBinding
+typingDecl bindings (AST.TopBinding n anno expr) = do
+    expr' <- typingExpr bindings expr
+    let exprTy = typeOfExpr expr'
+    case anno of
+      Nothing -> return ()
+      Just anno' -> do
+        ty <- typingAnno bindings anno'
+        constraint ty exprTy
+        return ()
+    info <- findValueInfo n
+    let ty = case info of
+                Just (ValueInfo _ ty) -> ty
+                Just (ConstrInfo _ _ ty) -> ty
+    constraint ty exprTy
+    return (TopBinding n expr')
+
 typingProg' :: TypeBindings -> AST.Program -> State Context Program
-typingProg' bindings (AST.Program decls) = do
-  s <- get
-  traceM . (++) "--------debug:\n" . show . typeInfoMap $ s
-  mapM_ scanTopValues decls
-  decls' <- mapM (typingDecl bindings) decls
-  return (Program (catMaybes decls'))
+typingProg' bindings (AST.Program datatypes values) = do
+  mapM_ scanTopBinding values
+  mapM_ scanDatatype datatypes
+  values' <- mapM (typingDecl bindings) values
+  return (Program values')
 
 typingProg :: AST.Program -> Program
-typingProg prog@(AST.Program decls) =
+typingProg prog@(AST.Program datatypes values) =
   let (prog', context') = runState (typingProg' bindings prog) context
       solutions = unify (constraints context') []
       rewritten = rewriteProg (Map.fromList solutions) prog'
@@ -272,7 +273,7 @@ typingProg prog@(AST.Program decls) =
       --pTraceShow (constraints context') 
       rewritten
   where
-    typeInfoMap = Map.fromList (scanTypes decls ++ builtinTypes)
+    typeInfoMap = Map.fromList (scanTypes datatypes ++ builtinTypes)
     valueInfoMap = Map.empty
     bindings = Map.empty
     freshTypes = [TypeVar . Unsolved $ synName (v : show (i :: Int)) | v <- ['a' .. 'z'], i <- [0 ..]]

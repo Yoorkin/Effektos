@@ -39,3 +39,18 @@ selectPrimOp _ = error ""
 makePatConstr :: String -> [Pattern] -> Pattern
 makePatConstr s@(x:_) [] | isLower x = PatVar (synName s)
 makePatConstr s pats = PatConstr (synName s) pats
+
+data TopDecl
+  = DeclDatatype Datatype
+  | DeclTopBinding TopBinding
+
+groupDecls :: [TopDecl] -> ([Datatype],[TopBinding])
+groupDecls = go [] []
+  where 
+    go datatypes bindings [] = (reverse datatypes, reverse bindings)
+    go datatypes bindings (decl:decls) = 
+      case decl of
+        DeclDatatype x -> go (x:datatypes) bindings decls
+        DeclTopBinding x -> go datatypes (x:bindings) decls
+
+

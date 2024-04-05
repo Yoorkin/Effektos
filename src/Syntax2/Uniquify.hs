@@ -111,10 +111,12 @@ uniquifyAnno st = go
       anno' <- uniquifyAnno st' anno
       return (AnnoForall ns' anno')
 
-uniquifyDecl :: Subst -> Decl -> CompEnv Decl
-uniquifyDecl st (TopValue n anno expr) =
-  TopValue (subst n st) <$> mapM (uniquifyAnno st) anno <*> uniquify st expr
-uniquifyDecl st (Datatype n quants constrs) = do
+uniquifyTopBinding :: Subst -> TopBinding -> CompEnv TopBinding
+uniquifyTopBinding st (TopBinding n anno expr) =
+  TopBinding (subst n st) <$> mapM (uniquifyAnno st) anno <*> uniquify st expr
+
+uniquifyDatatype :: Subst -> Datatype -> CompEnv Datatype
+uniquifyDatatype st (Datatype n quants constrs) = do
   quants' <- mapM uniName quants
   let st' = appends quants quants' st
   constrs' <- processConstrs st' constrs
@@ -125,16 +127,17 @@ uniquifyDecl st (Datatype n quants constrs) = do
     processConstr st1 (constr, annos) =
       (subst constr st1,) <$> mapM (uniquifyAnno st1) annos
 
-scanDeclNames :: [Decl] -> [Name]
-scanDeclNames = concatMap go
+scanDeclNames :: [Datatype] -> [TopBinding] -> [Name]
+scanDeclNames datatypes bindings = concatMap g datatypes ++ concatMap f bindings
   where
-    go (TopValue n _ _) = [n]
-    go (Datatype n _ constrs) = n : map fst constrs
+    f (TopBinding n _ _) = [n]
+    g (Datatype n _ constrs) = n : map fst constrs
 
 uniquifyProg :: Program -> CompEnv Program
-uniquifyProg (Program decls) = do
-  let topNames = scanDeclNames decls
+uniquifyProg (Program datatypes values) = do
+  let topNames = scanDeclNames datatypes values
   topNames' <- mapM uniName topNames
   let st = Map.fromList (zip topNames topNames')
-  decls' <- mapM (uniquifyDecl st) decls
-  return (Program decls')
+  datatypes' <- mapM (uniquifyDatatype st) datatypes
+  values' <- mapM (uniquifyTopBinding st) values
+  return (Program datatypes' values')
