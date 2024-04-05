@@ -80,12 +80,14 @@ data DatatypeInfo
   deriving (Show)
 
 data TypeInfo
-  = TypeConstrInfo Name Arity
+  = TypeConstrInfo Arity
+  | QuantInfo Type
   deriving (Show)
 
 data ValueInfo
-  = ValueInfo Name Type
-  | ConstrInfo Name Arity Type
+  = ValueInfo Type
+  | ConstrInfo Arity Type
+  | LocalInfo Type
   deriving (Show)
 
 data Table

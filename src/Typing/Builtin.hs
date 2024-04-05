@@ -22,10 +22,10 @@ tupleType tys = TypeConstr (tupleTypeConstrName (length tys)) tys
 
 builtinTypes :: [(Name, TypeInfo)]
 builtinTypes =
-  [ (boolName, TypeConstrInfo boolName 0),
-    (intName, TypeConstrInfo intName 0),
-    (unitName, TypeConstrInfo unitName 0),
-    (arrowName, TypeConstrInfo arrowName 2)
+  [ (boolName, TypeConstrInfo 0),
+    (intName, TypeConstrInfo 0),
+    (unitName, TypeConstrInfo 0),
+    (arrowName, TypeConstrInfo 2)
   ]
 
 infixr 5 |->
