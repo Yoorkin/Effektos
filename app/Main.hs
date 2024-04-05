@@ -4,7 +4,7 @@
 module Main (main) where
 
 import qualified Core.ClosureConversion as ClosureConversion
-import Util.CompileEnv
+import Common.CompileEnv
 import Control.Monad (when)
 import Control.Monad.State.Lazy
 import Syntax.Lexer (tokenize,showTokens)
@@ -75,7 +75,7 @@ compileMode =
 main :: IO ()
 main = do
   options <- cmdArgs (modes [compileMode])
-  evalStateT (pipeline options) mkCompStates
+  runComp (pipeline options) 
 
 pipeline :: CommandOptions -> CompEnvT IO ()
 pipeline options = do

@@ -13,7 +13,8 @@ import qualified Syntax2.AST as AST
 import Typing.Builtin
 import Typing.QualifiedNames
 import Typing.Typedtree
-import Util.CompileEnv
+import Common.CompileEnv
+import Common.Name
 import Debug.Trace (traceM)
 
 type TypeBindings = Map Name Type

@@ -12,7 +12,8 @@ where
 
 import Syntax.Constant
 import Syntax.Primitive
-import Util.CompileEnv
+import Common.CompileEnv
+import Common.Name
 
 newtype Program
   = Program [Decl]  

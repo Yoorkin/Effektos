@@ -7,7 +7,7 @@ import Syntax.Constant as Constant
 import Syntax.Primitive as Op
 import Typing.QualifiedNames
 import Typing.Typedtree
-import Util.CompileEnv (Name)
+import Common.Name
 
 boolType, intType, unitType :: Type
 boolType = TypeConstr boolName []

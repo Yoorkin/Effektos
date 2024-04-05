@@ -9,7 +9,8 @@ import Syntax.Constant
 import Syntax.Primitive
 import Typing.QualifiedNames (arrowName)
 import Typing.Symbol
-import Util.CompileEnv
+import Common.CompileEnv
+import Common.Name
 import Util.Prettyprint (render)
 
 newtype Program
@@ -70,8 +71,8 @@ instance Pretty Type where
       go (TypeForall quants ty) =
         pretty "∀" <> vsep (map (pretty . show) quants) <> pretty " . " <> go ty
       go (TypeConstr n [a, b]) | n == arrowName = go a <+> pretty "->" <+> go b
-      go (TypeConstr n []) = pretty n
-      go (TypeConstr n tys) = parens (pretty n <+> vsep (map pretty tys))
+      go (TypeConstr n []) = pretty $ show n
+      go (TypeConstr n tys) = parens (pretty (show n) <+> vsep (map pretty tys))
 
 instance Show Type where
   show = render . pretty

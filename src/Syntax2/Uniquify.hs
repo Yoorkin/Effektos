@@ -10,7 +10,8 @@ import Data.Foldable (foldlM)
 import qualified Data.Map as Map
 import Data.Maybe
 import Syntax2.AST
-import Util.CompileEnv
+import Common.CompileEnv
+import Common.Name
 
 type Subst = Map.Map Name Name
 
@@ -24,6 +25,9 @@ appends (x : xs) (y : ys) st = appends xs ys (append x y st)
 
 subst :: (Ord k) => k -> Map.Map k k -> k
 subst old = fromMaybe old . Map.lookup old
+
+uniName :: (Monad m) => Name -> CompEnvT m Name
+uniName = toUnique
 
 uniquifyPatterns :: Subst -> [Pattern] -> CompEnv (Subst, [Pattern])
 uniquifyPatterns st = foldlM

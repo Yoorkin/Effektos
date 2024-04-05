@@ -8,7 +8,7 @@ import Syntax2.Lexer
 import Syntax2.AST
 import Syntax.Primitive as Op
 import Data.Char (isLower)
-import Util.CompileEnv
+import Common.Name
 
 parseError :: [Token] -> a
 parseError tokens = error $ "Parse error: " ++ show (take 10 tokens)

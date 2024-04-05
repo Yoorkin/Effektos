@@ -1,5 +1,6 @@
 module Typing.QualifiedNames where
-import Util.CompileEnv
+import Common.CompileEnv
+import Common.Name
 
 boolName, intName, unitName, arrowName :: Name
 boolName = synName "Bool"

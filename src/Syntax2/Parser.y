@@ -4,7 +4,8 @@ module Syntax2.Parser(parse) where
 import Syntax2.AST as Syntax
 import Syntax2.Lexer as Lexer
 import Syntax2.Utils
-import Util.CompileEnv
+import Common.CompileEnv
+import Common.Name
 import Syntax.Constant as Constant
 import qualified Syntax.Primitive as Primitive
 }
