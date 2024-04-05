@@ -13,15 +13,12 @@ import Typing.Typedtree
 
 typingProg :: AST.Program -> Program
 typingProg prog =
-  let (prog', context') = runState (typingProg' prog) context
-      solutions = unify (constraints context') []
+  let (prog', constraints') = typingConstraint prog
+      solutions = unify constraints' []
       rewritten = rewriteProg (Map.fromList solutions) prog'
    in -- pTraceShow prog' $
       -- pTraceShow (constraints context')
       rewritten
-  where
-    freshTypes = [TypeVar . Unsolved $ synName (v : show (i :: Int)) | v <- ['a' .. 'z'], i <- [0 ..]]
-    context = Context freshTypes []
 
 unify :: [Constraint] -> [Constraint] -> [Constraint]
 unify [] acc = acc

@@ -1,4 +1,4 @@
-module Typing.Constraint where
+module Typing.Constraint(typingConstraint, TypeMap, ValueMap, Constraint) where
 
 import Common.Name
 import Control.Monad (mapAndUnzipM, replicateM, zipWithM_)
@@ -11,7 +11,6 @@ import Typing.Builtin
 import qualified Typing.Builtin as Builtin
 import Typing.QualifiedNames
 import Typing.Typedtree
-
 
 type TypeMap = Map Name TypeInfo
 
@@ -181,7 +180,6 @@ typingAnno types (AST.AnnoTypeConstr constr annos) = do
       | otherwise -> error "type constructor arity didn't match"
     Nothing -> error $ "type " ++ show constr ++ " not found"
 
-
 scanTypes :: [AST.Datatype] -> [(Name, TypeInfo)]
 scanTypes = map go
   where
@@ -261,3 +259,11 @@ typingProg' (AST.Program datatypes bindings) = do
   -- collect constraints
   bindings' <- mapM (typingDecl values types) bindings
   return (Program bindings')
+
+typingConstraint :: AST.Program -> (Program, [Constraint])
+typingConstraint prog =
+  let (prog', context') = runState (typingProg' prog) context
+   in (prog', constraints context')
+  where
+    freshTypes = [TypeVar . Unsolved $ synName (v : show (i :: Int)) | v <- ['a' .. 'z'], i <- [0 ..]]
+    context = Context freshTypes []
