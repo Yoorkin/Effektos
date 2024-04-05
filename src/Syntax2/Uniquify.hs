@@ -29,7 +29,7 @@ uniquifyPatterns :: Subst -> [Pattern] -> CompEnv (Subst, [Pattern])
 uniquifyPatterns st = foldlM
     ( \(st1, acc) pat -> do
         (st2, pat') <- uniquifyPattern st1 pat
-        return (st2, pat' : acc)
+        return (st2, acc ++ [pat'])
     )
     (st, [])
 

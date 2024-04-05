@@ -92,21 +92,25 @@ endWith(x,end) : x end { $1 }
 
 Start : many(Decl) EOF { Program $1 }
 
-Decl : 'data' IDENT many1(IDENT) '=' option('|') sepBy1(Constructor,'|') 
+Decl : 'data' IDENT many(IDENT) '=' option('|') sepBy1(Constructor,'|') 
                                        { Datatype (synName $2) (map synName $3) $6 }
      | 'let' IDENT '=' Expr            { TopValue (synName $2) Nothing $4 }                                       
      | 'let' IDENT ':' Anno '=' Expr   { TopValue (synName $2) (Just $4) $6 }
 
-Constructor : IDENT many(Anno)  { (synName $1, $2) }
+Constructor : IDENT many(SimpleAnno)  { (synName $1, $2) }
 
-Anno : IDENT  { AnnoVar (synName $1) }
-     | IDENT many1(Anno) { AnnoTypeConstr (synName $1) $2 }
-     | Anno '->' Anno { AnnoArrow $1 $3 }
+Anno : IDENT many1(SimpleAnno)        { AnnoTypeConstr (synName $1) $2 }
+     | Anno '->' SimpleAnno           { AnnoArrow $1 $3 }
      | 'forall' many1(IDENT) '.' Anno { AnnoForall (map synName $2) $4 }
-     | '(' sepBy(Anno,',') ')' { case $2 of
-                                     [] -> AnnoVar (synName "unit")
-                                     [x] -> x
-                                     xs -> AnnoTuple xs }
+     | SimpleAnno                     { $1 }
+
+SimpleAnno: IDENT                   { AnnoVar (synName $1) }
+          | '(' sepBy(Anno,',') ')' { case $2 of
+                                        [] -> AnnoVar (synName "unit")
+                                        [x] -> x
+                                        xs -> AnnoTuple xs }
+         
+
 
 Op : '+' { $1 } 
    | '-' { $1 }
@@ -121,8 +125,7 @@ Op : '+' { $1 }
 
 Pattern : IDENT                                  { makePatConstr $1 [] }
         | Pattern ':' Anno                       { PatAnno $1 $3 }
-        | IDENT many1(Pattern)                   { makePatConstr $1 $2 }
-        | '(' Pattern ')'                        { $2 }
+        | '(' IDENT many1(Pattern) ')'           { makePatConstr $2 $3 }
         | '_'                                    { PatWildCard }
         | Constant                               { PatConstant $1 }
         | '(' sepBy(Pattern,',') ')'             { case $2 of 
