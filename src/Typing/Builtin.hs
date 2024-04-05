@@ -34,10 +34,12 @@ infixr 5 |->
 a |-> b = arrowType a b
 
 splitArrowType :: Type -> ([Type], Type)
+splitArrowType (TypeForall _ ty) = splitArrowType ty
 splitArrowType ty = aux ty []
   where
     aux (TypeConstr name [a, b]) acc | name == arrowName = aux b (a : acc)
     aux _ (ret : acc) = (reverse acc, ret)
+    aux a b = error $ show (a,b)
 
 typeOfConstant :: Constant -> Type
 typeOfConstant = \case
