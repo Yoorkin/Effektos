@@ -56,8 +56,8 @@ rewriteType subst = \case
 rewritePattern :: Map Type Type -> Pattern -> Pattern
 rewritePattern subst = \case
   (PatVar ty str) -> PatVar (goTy ty) str
-  (PatConstr ty constr pats) -> PatConstr (goTy ty) constr (map go pats)
-  (PatConstant ty c) -> PatConstant (goTy ty) c
+  (PatCon ty constr pats) -> PatCon (goTy ty) constr (map go pats)
+  (PatLit ty c) -> PatLit (goTy ty) c
   (PatTuple ty elems) -> PatTuple (goTy ty) (map go elems)
   _ -> error ""
   where
@@ -72,7 +72,7 @@ rewriteProg subst (Program decls) = Program $ map go decls
 rewriteExpr :: Map Type Type -> Expr -> Expr
 rewriteExpr subst = \case
   (Var ty str) -> Var (goTy ty) str
-  (Fun ty pat body) -> Fun (goTy ty) (goPat pat) (go body)
+  (Lam ty pat body) -> Lam (goTy ty) (goPat pat) (go body)
   (App ty f x) -> App (goTy ty) (go f) (go x)
   (Let ty pat body expr) -> Let (goTy ty) (goPat pat) (go body) (go expr)
   (Fix ty binders fns expr) -> Fix (goTy ty) binders (goFns fns) (go expr)
@@ -80,7 +80,7 @@ rewriteExpr subst = \case
   (Match ty cond pats exprs) -> Match (goTy ty) (go cond) (map goPat pats) (map go exprs)
   (Tuple ty elems) -> Tuple (goTy ty) (map go elems)
   (Prim ty op xs) -> Prim (goTy ty) op (map go xs)
-  (Const ty c) -> Const (goTy ty) c
+  (Lit ty c) -> Lit (goTy ty) c
   (Seq ty a b) -> Seq (goTy ty) (go a) (go b)
   (Hole ty) -> Hole (goTy ty)
   where

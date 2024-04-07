@@ -1,4 +1,4 @@
-module Typing.Constraint(typingConstraint, TypeMap, ValueMap, Constraint) where
+module Typing.Constraint(typingConstraint, Constraint) where
 
 import Common.Name
 import Control.Monad (mapAndUnzipM, replicateM, zipWithM_)
@@ -56,10 +56,10 @@ typingPattern values types (AST.PatConstr constr pats) = do
         _ -> error $ "constructor '" ++ show constr ++ "' not found"
   let (paramTys, retTy) = splitArrowType constrTy
   zipWithM_ constraint paramTys (map typeOfPat pats')
-  return (values', PatConstr retTy constr pats')
+  return (values', PatCon retTy constr pats')
 typingPattern bindings _ (AST.PatConstant c) =
   let ty = typeOfConstant c
-   in return (bindings, PatConstant ty c)
+   in return (bindings, PatLit ty c)
 
 typingExpr :: ValueMap -> TypeMap -> AST.Expr -> State Context Expr
 typingExpr values _ (AST.Var n) =
@@ -74,7 +74,7 @@ typingExpr values types (AST.Fun pat body) =
     (values', pat') <- typingPattern values types pat
     body' <- typingExpr values' types body
     let ty = arrowType (typeOfPat pat') (typeOfExpr body')
-    return (Fun ty pat' body')
+    return (Lam ty pat' body')
 typingExpr values types (AST.App f x) =
   do
     f' <- typingExpr values types f
@@ -151,7 +151,7 @@ typingExpr values types (AST.Prim prim args) = do
     return (Prim retTy prim args')
 typingExpr _ _ (AST.Const c) =
   let ty = typeOfConstant c
-   in return (Const ty c)
+   in return (Lit ty c)
 typingExpr values types (AST.Sequence expr1 expr2) =
   do
     expr1' <- typingExpr values types expr1

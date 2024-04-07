@@ -25,8 +25,8 @@ type Fn = (Pattern, Expr)
 
 data Pattern
   = PatVar Type Name
-  | PatConstr Type Constr [Pattern]
-  | PatConstant Type Constant
+  | PatCon Type Constr [Pattern]
+  | PatLit Type Constant
   | PatTuple Type [Pattern]
   | PatOr Type Pattern Pattern
   | PatWildCard Type
@@ -34,7 +34,7 @@ data Pattern
 
 data Expr
   = Var Type Name
-  | Fun Type Pattern Expr
+  | Lam Type Pattern Expr
   | App Type Expr Expr
   | Let Type Pattern Expr Expr
   | Fix Type [Binder] [Fn] Expr
@@ -42,7 +42,7 @@ data Expr
   | Match Type Expr [Pattern] [Expr]
   | Tuple Type [Expr]
   | Prim Type Primitive [Expr]
-  | Const Type Constant
+  | Lit Type Constant
   | Seq Type Expr Expr
   | Hole Type
   deriving (Show)
@@ -107,8 +107,8 @@ free ty = nub (go ty)
 typeOfPat :: Pattern -> Type
 typeOfPat = \case
   (PatVar ty _) -> ty
-  (PatConstr ty _ _) -> ty
-  (PatConstant ty _) -> ty
+  (PatCon ty _ _) -> ty
+  (PatLit ty _) -> ty
   (PatTuple ty _) -> ty
   (PatOr ty _ _) -> ty
   (PatWildCard ty) -> ty
@@ -116,7 +116,7 @@ typeOfPat = \case
 typeOfExpr :: Expr -> Type
 typeOfExpr = \case
   (Var ty _) -> ty
-  (Fun ty _ _) -> ty
+  (Lam ty _ _) -> ty
   (App ty _ _) -> ty
   (Let ty _ _ _) -> ty
   (Fix ty _ _ _) -> ty
@@ -124,7 +124,7 @@ typeOfExpr = \case
   (Match ty _ _ _) -> ty
   (Tuple ty _) -> ty
   (Prim ty _ _) -> ty
-  (Const ty _) -> ty
+  (Lit ty _) -> ty
   (Seq ty _ _) -> ty
   (Hole ty) -> ty
 
