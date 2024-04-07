@@ -58,7 +58,6 @@ rewritePattern subst = \case
   (PatVar ty str) -> PatVar (goTy ty) str
   (PatCon ty constr pats) -> PatCon (goTy ty) constr (map go pats)
   (PatLit ty c) -> PatLit (goTy ty) c
-  (PatTuple ty elems) -> PatTuple (goTy ty) (map go elems)
   _ -> error ""
   where
     goTy = rewriteType subst
@@ -75,14 +74,9 @@ rewriteExpr subst = \case
   (Lam ty pat body) -> Lam (goTy ty) (goPat pat) (go body)
   (App ty f x) -> App (goTy ty) (go f) (go x)
   (Let ty pat body expr) -> Let (goTy ty) (goPat pat) (go body) (go expr)
-  (Fix ty binders fns expr) -> Fix (goTy ty) binders (goFns fns) (go expr)
-  (If ty cond ifso ifnot) -> If (goTy ty) (go cond) (go ifso) (go ifnot)
-  (Match ty cond pats exprs) -> Match (goTy ty) (go cond) (map goPat pats) (map go exprs)
-  (Tuple ty elems) -> Tuple (goTy ty) (map go elems)
+  (Case ty cond pats exprs) -> Case (goTy ty) (go cond) (map goPat pats) (map go exprs)
   (Prim ty op xs) -> Prim (goTy ty) op (map go xs)
   (Lit ty c) -> Lit (goTy ty) c
-  (Seq ty a b) -> Seq (goTy ty) (go a) (go b)
-  (Hole ty) -> Hole (goTy ty)
   where
     go = rewriteExpr subst
     goTy = rewriteType subst

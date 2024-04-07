@@ -27,7 +27,6 @@ data Pattern
   = PatVar Type Name
   | PatCon Type Constr [Pattern]
   | PatLit Type Constant
-  | PatTuple Type [Pattern]
   | PatOr Type Pattern Pattern
   | PatWildCard Type
   deriving (Show)
@@ -37,14 +36,10 @@ data Expr
   | Lam Type Pattern Expr
   | App Type Expr Expr
   | Let Type Pattern Expr Expr
-  | Fix Type [Binder] [Fn] Expr
-  | If Type Expr Expr Expr
-  | Match Type Expr [Pattern] [Expr]
-  | Tuple Type [Expr]
-  | Prim Type Primitive [Expr]
   | Lit Type Constant
-  | Seq Type Expr Expr
-  | Hole Type
+  | Case Type Expr [Pattern] [Expr]
+  | Prim Type Primitive [Expr]
+  | Con Type Constr [Expr]
   deriving (Show)
 
 type Arity = Int
@@ -109,7 +104,6 @@ typeOfPat = \case
   (PatVar ty _) -> ty
   (PatCon ty _ _) -> ty
   (PatLit ty _) -> ty
-  (PatTuple ty _) -> ty
   (PatOr ty _ _) -> ty
   (PatWildCard ty) -> ty
 
@@ -119,14 +113,10 @@ typeOfExpr = \case
   (Lam ty _ _) -> ty
   (App ty _ _) -> ty
   (Let ty _ _ _) -> ty
-  (Fix ty _ _ _) -> ty
-  (If ty _ _ _) -> ty
-  (Match ty _ _ _) -> ty
-  (Tuple ty _) -> ty
+  (Case ty _ _ _) -> ty
   (Prim ty _ _) -> ty
   (Lit ty _) -> ty
-  (Seq ty _ _) -> ty
-  (Hole ty) -> ty
+  (Con ty _ _) -> ty
 
 isUnsolved :: TyVar -> Bool
 isUnsolved (Unsolved _) = True

@@ -1,4 +1,4 @@
-module Typing.Constraint(typingConstraint, Constraint) where
+module Typing.Constraint (typingConstraint, Constraint) where
 
 import Common.Name
 import Control.Monad (mapAndUnzipM, replicateM, zipWithM_)
@@ -6,6 +6,7 @@ import Control.Monad.State
 import Data.Foldable (foldlM)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import qualified Syntax.Constant as Constant
 import qualified Syntax2.AST as AST
 import Typing.Builtin
 import qualified Typing.Builtin as Builtin
@@ -92,23 +93,6 @@ typingExpr values types (AST.Let pat body expr) =
     constraint (typeOfPat pat') (typeOfExpr body')
     let ty = typeOfExpr expr'
     return (Let ty pat' body' expr')
-typingExpr values types (AST.Fix binders fns expr) =
-  do
-    tys <- replicateM (length binders) freshType
-    let newValues = Map.fromList (zip binders (map LocalInfo tys))
-    let values' = newValues `Map.union` values
-    fns' <- mapM (typingFn values') fns
-    zipWithM_ constraint tys (map typeOfFn fns')
-    expr' <- typingExpr values' types expr
-    let ty = typeOfExpr expr'
-    return (Fix ty binders fns' expr')
-  where
-    typingFn values1 (pat, body) = do
-      (values2, pat') <- typingPattern values1 types pat
-      body' <- typingExpr values2 types body
-      constraint (typeOfPat pat') (typeOfExpr body')
-      return (pat', body')
-    typeOfFn (pat, body) = arrowType (typeOfPat pat) (typeOfExpr body)
 typingExpr values types (AST.If cond ifso ifnot) =
   do
     cond' <- typingExpr values types cond
@@ -118,7 +102,8 @@ typingExpr values types (AST.If cond ifso ifnot) =
     constraint (typeOfExpr ifso') ty
     constraint (typeOfExpr ifnot') ty
     constraint (typeOfExpr cond') boolType
-    return (If ty cond' ifso' ifnot')
+    return (Case ty cond' [PatLit boolType (Constant.Boolean True), 
+                           PatLit boolType (Constant.Boolean False)] [ifso', ifnot'])
 typingExpr values types (AST.Match cond pats exprs) =
   do
     cond' <- typingExpr values types cond
@@ -129,7 +114,7 @@ typingExpr values types (AST.Match cond pats exprs) =
     ty <- freshType
     let exprTys = map typeOfExpr exprs'
     mapM_ (constraint ty) exprTys
-    return (Match ty cond' pats' exprs')
+    return (Case ty cond' pats' exprs')
   where
     typingCase values1 (pat, expr) = do
       (values2, pat') <- typingPattern values1 types pat
@@ -140,7 +125,7 @@ typingExpr values types (AST.Tuple elems) =
   do
     elems' <- mapM (typingExpr values types) elems
     let ty = tupleType (map typeOfExpr elems')
-    return (Tuple ty elems')
+    return (Con ty (tupleTypeConstrName (length elems')) elems')
 typingExpr values types (AST.Prim prim args) = do
   do
     args' <- mapM (typingExpr values types) args
@@ -152,15 +137,6 @@ typingExpr values types (AST.Prim prim args) = do
 typingExpr _ _ (AST.Const c) =
   let ty = typeOfConstant c
    in return (Lit ty c)
-typingExpr values types (AST.Sequence expr1 expr2) =
-  do
-    expr1' <- typingExpr values types expr1
-    expr2' <- typingExpr values types expr2
-    constraint (typeOfExpr expr1') unitType
-    let ty = typeOfExpr expr2'
-    return (Seq ty expr1' expr2')
-typingExpr _ _ AST.Hole =
-  Hole <$> freshType
 typingExpr _ _ _ = error ""
 
 typingAnno :: TypeMap -> AST.Anno -> State Context Type
