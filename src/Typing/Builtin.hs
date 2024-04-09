@@ -17,8 +17,31 @@ unitType = TypeConstr unitName []
 arrowType :: Type -> Type -> Type
 arrowType a b = TypeConstr arrowName [a, b]
 
+makeApps :: Type -> Expr -> [Expr] -> Expr
+makeApps _ _ [] = error "invalid args"
+makeApps retTy f [x] = App retTy f x
+makeApps retTy f (x:xs) = makeApps retTy (App ty f x) xs
+  where ty = case typeOfExpr f of
+               (TypeConstr n [_,b]) | n == arrowName -> b
+               _ -> error $ "makeApps: type of " ++ show x ++ " is not a arrow"
+
+-- Type of tuple, consis of it's elements.
 tupleType :: [Type] -> Type
-tupleType tys = TypeConstr (tupleTypeConstrName (length tys)) tys
+tupleType tys = TypeConstr (tupleTypeCon (length tys)) tys
+
+-- Type of tuple constructor.
+-- It accepts curried N type argument and return a N-tuple type.
+tupleConType :: [Type] -> Type
+tupleConType argTys = go argTys
+  where 
+      go [] = tupleType argTys
+      go (x:xs) = x |-> go xs
+
+-- Tuple type constructor and tuple constructor.
+-- Their names are ("Tuple" ++ show arity).
+tupleTypeCon, tupleCon :: Int -> Name
+tupleTypeCon i = synName $ "Tuple" ++ show i
+tupleCon = tupleTypeCon
 
 builtinTypes :: [(Name, TypeInfo)]
 builtinTypes =

@@ -38,8 +38,8 @@ data Expr
   | Let Type Pattern Expr Expr
   | Lit Type Constant
   | Case Type Expr [Pattern] [Expr]
-  | Prim Type Primitive [Expr]
-  | Con Type Constr [Expr]
+  | Prim Type Primitive
+  | Con Type Constr
   deriving (Show)
 
 type Arity = Int
@@ -56,16 +56,18 @@ data Type
   deriving (Eq, Ord)
 
 instance Pretty Type where
-  pretty = parens . go
+  pretty = go
     where
       go (TypeVar var) = pretty $ case var of
         Unsolved n -> show n ++ "`"
         Solved n -> show n
       go (TypeForall quants ty) =
         pretty "∀" <> vsep (map (pretty . show) quants) <> pretty " . " <> go ty
-      go (TypeConstr n [a, b]) | n == arrowName = go a <+> pretty "->" <+> go b
+      go (TypeConstr n [a, b]) | n == arrowName = parens (go a <+> pretty "->" <+> go b)
       go (TypeConstr n []) = pretty $ show n
-      go (TypeConstr n tys) = parens (pretty (show n) <+> vsep (map pretty tys))
+      go (TypeConstr n tys) = pretty (show n) <+> vsep (map withParens tys)
+      withParens expr@(TypeConstr _ tys) | not (null tys) = parens (go expr)
+      withParens expr = go expr
 
 instance Show Type where
   show = render . pretty
@@ -114,9 +116,9 @@ typeOfExpr = \case
   (App ty _ _) -> ty
   (Let ty _ _ _) -> ty
   (Case ty _ _ _) -> ty
-  (Prim ty _ _) -> ty
+  (Prim ty _) -> ty
   (Lit ty _) -> ty
-  (Con ty _ _) -> ty
+  (Con ty _) -> ty
 
 isUnsolved :: TyVar -> Bool
 isUnsolved (Unsolved _) = True

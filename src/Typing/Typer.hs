@@ -75,8 +75,9 @@ rewriteExpr subst = \case
   (App ty f x) -> App (goTy ty) (go f) (go x)
   (Let ty pat body expr) -> Let (goTy ty) (goPat pat) (go body) (go expr)
   (Case ty cond pats exprs) -> Case (goTy ty) (go cond) (map goPat pats) (map go exprs)
-  (Prim ty op xs) -> Prim (goTy ty) op (map go xs)
+  (Prim ty op) -> Prim (goTy ty) op
   (Lit ty c) -> Lit (goTy ty) c
+  (Con ty c) -> Con (goTy ty) c
   where
     go = rewriteExpr subst
     goTy = rewriteType subst

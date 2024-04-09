@@ -1,7 +1,7 @@
 module Typing.Constraint (typingConstraint, Constraint) where
 
 import Common.Name
-import Control.Monad (mapAndUnzipM, replicateM, zipWithM_)
+import Control.Monad (mapAndUnzipM, zipWithM_)
 import Control.Monad.State
 import Data.Foldable (foldlM)
 import Data.Map.Strict (Map)
@@ -12,6 +12,7 @@ import Typing.Builtin
 import qualified Typing.Builtin as Builtin
 import Typing.QualifiedNames
 import Typing.Typedtree
+import Typing.QualifiedNames
 
 type TypeMap = Map Name TypeInfo
 
@@ -125,7 +126,10 @@ typingExpr values types (AST.Tuple elems) =
   do
     elems' <- mapM (typingExpr values types) elems
     let ty = tupleType (map typeOfExpr elems')
-    return (Con ty (tupleTypeConstrName (length elems')) elems')
+    let arity = length elems'
+    let tupleConstr = tupleConstrName arity
+    let tupleConTy = tupleConType (map typeOfExpr elems')
+    return (makeApps ty (Con tupleConTy tupleConstr) elems')
 typingExpr values types (AST.Prim prim args) = do
   do
     args' <- mapM (typingExpr values types) args
@@ -133,7 +137,7 @@ typingExpr values types (AST.Prim prim args) = do
     let argTys = map typeOfExpr args'
     let (paramTys, retTy) = splitArrowType primTy
     zipWithM_ constraint argTys paramTys
-    return (Prim retTy prim args')
+    return (makeApps retTy (Prim primTy prim) args')
 typingExpr _ _ (AST.Const c) =
   let ty = typeOfConstant c
    in return (Lit ty c)
@@ -160,6 +164,7 @@ scanTypes :: [AST.Datatype] -> [(Name, TypeInfo)]
 scanTypes = map go
   where
     go (AST.Datatype n quants _) = (n, TypeConstrInfo (length quants))
+
 
 makeConstrTy :: [TyVar] -> [Type] -> Type -> Type
 makeConstrTy quants =

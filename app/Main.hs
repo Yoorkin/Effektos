@@ -85,7 +85,7 @@ pipeline options = do
   uni <- hoistIO (Syntax2.Uniquify.uniquifyProg ast)
   lift $ pPrint uni
   lift $ putStrLn "=============== typing ================="
-  let typedtree = Typer.typingProg ast
+  let typedtree = Typer.typingProg uni
   lift $ pPrint typedtree
   -- when (show_input options) $ do
   --   lift $ putStrLn "=========== Source ================"
