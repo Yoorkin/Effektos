@@ -32,6 +32,11 @@ import qualified Typing.Typer as Typer
 import qualified Syntax2.Parser
 import qualified Syntax2.Lexer
 import qualified Syntax2.Uniquify
+import qualified Typing.PatternMatch as PatternMatch
+import qualified Syntax2.AST as AST
+import qualified Data.Map.Lazy as Map
+import Common.Name
+import Typing.Typedtree (DatatypeInfo (..))
 
 data Effektos = Compile
   { files :: [FilePath],
@@ -77,6 +82,10 @@ main = do
   options <- cmdArgs (modes [compileMode])
   runComp (pipeline options) 
 
+collectDatatypes :: AST.Program -> Map.Map Name DatatypeInfo 
+collectDatatypes (AST.Program dts _) = Map.fromList $ map go dts 
+          where go (AST.Datatype n quants constrs) = (n, DataTypeInfo n quants (map fst constrs) )
+
 pipeline :: CommandOptions -> CompEnvT IO ()
 pipeline options = do
   input <- lift $ readFile (head . files $ options)
@@ -84,9 +93,13 @@ pipeline options = do
   let ast = Syntax2.Parser.parse tokens
   uni <- hoistIO (Syntax2.Uniquify.uniquifyProg ast)
   lift $ pPrint uni
+  let datatypes = collectDatatypes uni
+  lift $ pPrint datatypes
   lift $ putStrLn "=============== typing ================="
   let typedtree = Typer.typingProg uni
   lift $ pPrint typedtree
+  let typedtree2 = PatternMatch.translate datatypes typedtree
+  lift $ pPrint typedtree2
   -- when (show_input options) $ do
   --   lift $ putStrLn "=========== Source ================"
   --   lift $ putStrLn input

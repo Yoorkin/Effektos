@@ -2,13 +2,13 @@
 
 module Typing.Typedtree where
 
+import Common.Name
 import Data.List (nub, (\\))
 import Data.Map (Map)
 import Prettyprinter
 import Syntax.Constant
 import Syntax.Primitive
 import Typing.QualifiedNames (arrowName)
-import Common.Name
 import Util.Prettyprint (render)
 
 newtype Program
@@ -29,7 +29,7 @@ data Pattern
   | PatLit Type Constant
   | PatOr Type Pattern Pattern
   | PatWildCard Type
-  deriving (Show)
+  deriving (Show,Eq)
 
 data Expr
   = Var Type Name
@@ -73,7 +73,11 @@ instance Show Type where
   show = render . pretty
 
 data DatatypeInfo
-  = DataTypeInfo Name [Name] [Name]
+  = DataTypeInfo
+  { datatypeName :: Name,
+    datatypeQuants :: [Name],
+    datatypeConstrs :: [Name]
+  }
   deriving (Show)
 
 data TypeInfo
